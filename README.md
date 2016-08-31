@@ -1,0 +1,122 @@
+# Jobb interaktivt mot NVDB api V2 
+================
+
+Jobb interaktivt og objektorientert mot NVDB api V2! 
+
+Les først gjennom [https://www.vegvesen.no/nvdb/apidokumentasjon](https://www.vegvesen.no/nvdb/apidokumentasjon)
+for nyttige tips og innblikk i logikken. 
+
+Rutinene håndterer all kommunikasjon mot NVDB API, inklusive paginering (d.v.s. vi henter passe
+store "bøtter" med data av gangen) Du føyer til dine egne søkefiltere, og du kan sjekke antall 
+treff før du laster ned data. 
+
+Vi oppforder alle til å gi oss relevant kontaktinfo i form av http headere 
+X-Client og X-Kontaktperson. Dermed har vi bedre statistikk over hvem som bruker API'et til hva, 
+og kan også nå ut til brukerne ved problemer. Denne informasjonen lese fra fila 
+*nvdbapi-clientinfo.json*; bruk gjerne malen  *nvdbapi-clientinfo-template.json* som utgangspunkt. 
+
+## nvdbVegnett 
+
+Klasse for å hente veglenker fra NVDB api. 
+
+## nvdbFagdata(objektTypeId) 
+
+Klasse for å hente fagdata (ikke vegnett, men øvrige data om vegen). Totalt har vi definert ca 385 ulike objekttyper
+i [datakatalogen](https://www.vegvesen.no/nvdb/apidokumentasjon/#/get/vegobjekttyper). 
+
+nvdbFagdata utvider klassen nvdbVegnett, og arver metoder og egenskaper fra denne. 
+
+argumentet objektTypeID angir hvilke objekttype vi jobber med. 
+
+# Felles metoder for nvdbVegnett og nvdbFagdata
+
+
+### refresh() 
+
+Sletter alle data, og nullstiller telleverket i paginering. 
+
+### addfilter_geo( FILTER )
+
+FILTER er en python dictionary med lokasjonsfilter (geografisk filter, områdefilter). 
+Se [dokumentasjon](https://www.vegvesen.no/nvdb/apidokumentasjon/#/parameter/lokasjonsfilter)
+Merk at noen filter kun kan brukes for å hente fagdata, ikke vegnett. 
+
+Eksempler
+
+```
+v = nvdbVegnett()
+v.addfilter_geo( { 'kommune' : 1601 } )
+v.addfilter_geo( { 'vegreferanse' : 'ev6hp15' } )
+```
+
+### nesteForekomst()
+
+Gir deg ett NVDB objekt (vegnett eller fagdata), i henhold til dine søkekriterier (filtre). Alle detaljer med paginering håndteres internt. 
+
+Eksempler:
+```
+v = nvdbFagdata(807) # Døgnhvileplass
+p = v.nesteForekomst()
+while p: 
+	print o['id']
+	o = v.nesteForekomst()
+```
+
+
+### nestePaginering()
+
+Bruker paginering til å neste "bøtte" med data fra NVDB forekomst, i henhold 
+til alle dine søkekriterier (filtre). 
+
+Returerer True hvis dette ga gyldige data, og False når vi har hentet alle objektene. 
+
+Du må selv kopiere data over fra listen *data\[\'objekter\'\]*
+
+Eksempel: 
+```
+p = nvdbFagdata( 809) # Døgnhvileplass 
+p.paginering['antall'] = 3 # Jukser litt med antall forekomster per bøtte. 
+TF = p.nestePaginering()
+minliste = []
+while TF: 
+    minliste.extend( p.data['objekter'] )
+	TF = p.nestePaginering()
+```
+
+# Ekstra metoder for nvdbFagdata 
+
+### info()
+
+Skriver til konsoll alle filtere og antall treff. 
+
+### statistikk()
+
+Sjekker hvor mange forekomster som finnes med angitte filtre. For strekningsobjekter fås også 
+strekningslengde (antall meter). 
+
+
+### addfilter_egenskap( TEKSTSTRENG )
+
+Tekststreng med filtre for egenskapsverdier. Se dokumentasjon for [egenskapsfiltre](https://www.vegvesen.no/nvdb/apidokumentasjon/#/parameter/egenskapsfilter)
+
+```
+p = nvdbFagdata( 809) # Døgnhvileplass 
+p.addfilter_egenskap( '9246=12886 AND 9273=12940') 
+p.addfilter_egenskap()
+>>  {'egenskap': '9246=12886 AND 9273=12940'} 
+p.addfilter_egenskap( '' ) # Nullstiller filteret. 
+```
+
+### addfilter_overlapp( TEKSTSTRENG ) 
+
+Henter fagdata som overlapper med annen objekttype (evt med eget filter). Se dokumentasjon for [overlappfilter](https://www.vegvesen.no/nvdb/apidokumentasjon/#/parameter/overlappfilter)
+
+
+
+## Felles egenskaper for nvdbVegnett og nvdbFagdata
+
+
+
+# TO DO 
+
+Smart håndtering av relasjoner. 
