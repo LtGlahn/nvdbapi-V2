@@ -377,6 +377,23 @@ class nvdbFagdata(nvdbVegnett):
 		print( 'Statistikk') 
 		print( json.dumps( self.statistikk(), indent = 4))
 
+
+	def egenskaper(self, *arg):
+		"""Skriver ut definisjonen av angitt egenskapstype (ID, heltall). 
+		Hvis ingen ID oppgis skriver vi ut en liste med ID, navn og type
+		for alle egenskapstyper for denne objekttypen. 
+		"""
+		# pdb.set_trace()
+		if len(arg) == 0: 
+			for eg in self.objektTypeDef['egenskapstyper']:
+				print( eg['id'], eg['navn'], eg['datatype_tekst'] )
+				
+		else: 
+			for eg in self.objektTypeDef['egenskapstyper']:
+				if eg['id'] == arg[0] or str(arg[0]) in eg['navn']: 
+					print( json.dumps( eg, indent=4)) 
+		
+		
 	def allfilters( self): 
 		"""Returns a dict with all current filters""" 
 		return merge_dicts( self.geofilter, self.egenskapsfilter, 
