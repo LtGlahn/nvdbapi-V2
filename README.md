@@ -1,5 +1,4 @@
 # Jobb interaktivt mot NVDB api V2 
-================
 
 Jobb interaktivt og objektorientert mot NVDB api V2! 
 
@@ -26,7 +25,7 @@ i [datakatalogen](https://www.vegvesen.no/nvdb/apidokumentasjon/#/get/vegobjektt
 
 nvdbFagdata utvider klassen nvdbVegnett, og arver metoder og egenskaper fra denne. 
 
-argumentet objektTypeID angir hvilke objekttype vi jobber med. 
+argumentet objektTypeID (heltall) angir hvilke objekttype vi jobber med, definert i [datakatalogen](https://www.vegvesen.no/nvdb/apidokumentasjon/#/get/vegobjekttyper)
 
 # Felles metoder for nvdbVegnett og nvdbFagdata
 
@@ -39,21 +38,23 @@ Sletter alle data, og nullstiller telleverket i paginering.
 
 FILTER er en python dictionary med lokasjonsfilter (geografisk filter, områdefilter). 
 Se [dokumentasjon](https://www.vegvesen.no/nvdb/apidokumentasjon/#/parameter/lokasjonsfilter)
+
 Merk at noen filter kun kan brukes for å hente fagdata, ikke vegnett. 
 
-Eksempler
+Eksempel
 
 ```
 v = nvdbVegnett()
 v.addfilter_geo( { 'kommune' : 1601 } )
 v.addfilter_geo( { 'vegreferanse' : 'ev6hp15' } )
+# Filteret har nå verdien { 'vegreferanse' : 'ev6hp15', 'kommune' : 1601 }
 ```
 
 ### nesteForekomst()
 
-Gir deg ett NVDB objekt (vegnett eller fagdata), i henhold til dine søkekriterier (filtre). Alle detaljer med paginering håndteres internt. 
+Gir deg ett NVDB objekt (vegnett eller fagdata), i henhold til dine søkekriterier (filtre). Alle detaljer med datanedlasting fra API håndteres internt. 
 
-Eksempler:
+
 ```
 v = nvdbFagdata(807) # Døgnhvileplass
 p = v.nesteForekomst()
@@ -72,7 +73,7 @@ Returerer True hvis dette ga gyldige data, og False når vi har hentet alle obje
 
 Du må selv kopiere data over fra listen *data\[\'objekter\'\]*
 
-Eksempel: 
+ 
 ```
 p = nvdbFagdata( 809) # Døgnhvileplass 
 p.paginering['antall'] = 3 # Jukser litt med antall forekomster per bøtte. 
@@ -83,7 +84,7 @@ while TF:
 	TF = p.nestePaginering()
 ```
 
-# Ekstra metoder for nvdbFagdata 
+# Flere metoder for nvdbFagdata
 
 ### info()
 
@@ -91,8 +92,8 @@ Skriver til konsoll alle filtere og antall treff.
 
 ### statistikk()
 
-Sjekker hvor mange forekomster som finnes med angitte filtre. For strekningsobjekter fås også 
-strekningslengde (antall meter). 
+Sjekker hvor mange forekomster som finnes med angitte filtre. Returnerer dict med antall treff 
+og  strekningslengde (antall meter). Strekningslengde er 0 for punktobjekter. 
 
 
 ### addfilter_egenskap( TEKSTSTRENG )
@@ -111,10 +112,25 @@ p.addfilter_egenskap( '' ) # Nullstiller filteret.
 
 Henter fagdata som overlapper med annen objekttype (evt med eget filter). Se dokumentasjon for [overlappfilter](https://www.vegvesen.no/nvdb/apidokumentasjon/#/parameter/overlappfilter)
 
+```
+u = nvdbFagdata(570) # Trafikkulykker
+u.addfilter_overlapp( '105(2021=2738)') #  Trafikkulykker med fartsgrense = 80 km/t
+```
 
+# Egenskaper nvdbVegnett og nvdbFagdata
 
-## Felles egenskaper for nvdbVegnett og nvdbFagdata
-
+Variabel | Verdi
+---------| --------
+data | Holder nedlastede data (i listen *objekter*) og metadata 
+geofilter | Geografisk filter
+headers | http headere som følger alle kall mot API
+sisteanrop | Siste kall som gikk mot NVDB API 
+objektTypeID | ID til objekttypen (ikke nvdbVegnett)
+objektTypeDef | Datakatalogdefinisjon for objekttypen (ikke nvdbVegnett)
+egenskapsfilter | Filter for egenskapsverdier (ikke nvdbVegnett)
+overlappfilter | Filter for overlapp mot andre fagdata (ikke nvdbVegnett)
+antall | Antall objekter i NVDB som tilfredsstiller kriteriene (ikke nvdbVegnett)
+strekningslengde | Total lengde på objektene i NVDB som tilfredsstiller søkekriteriene (ikke nvdbVegnett)
 
 
 # TO DO 
