@@ -125,6 +125,8 @@ for alle egenskapstyper for denne objekttypen.
 
 I stedet for ID (heltall) kan du også oppgi en tekststreng som sjekkes mot 
 navnet på egenskapstypene. 
+
+Denne funksjonen er nyttig for å finne riktig verdi på egenskap- og overlappfiltere. 
 ```
 p = nvdbFagdata( 809) # Døgnhvileplass 
 p.egenskaper()
