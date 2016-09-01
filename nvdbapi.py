@@ -459,6 +459,13 @@ class nvdbFagdata(nvdbVegnett):
 		
 		if len( arg) == 1 and arg[0]: 
 			self.egenskapsfilter.update( { 'egenskap' : arg[0] } ) 
+			
+			# Warning users about a bug in NVDB api
+			if '*' in arg[0]:
+				warn( "Warning - bug in NVDB api for wildcard (*) text" + \
+						"matching.\n" +  
+						"You'll probably find ZERO features with this filter") 
+			
 		elif len(arg) == 1 and not arg[0]: 
 			self.egenskapsfilter = {} 
 		else:
