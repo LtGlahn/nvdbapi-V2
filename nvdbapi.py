@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import json
-# import geojson
-# import shapely.wkt
 import requests
 from warnings import warn
-import pdb
 
 # Uncomment to silent those unverified https-request warnings
 requests.packages.urllib3.disable_warnings() 
@@ -134,7 +131,7 @@ class nvdbVegnett:
 									'       N.objektType(45)')))
 		if isinstance( self, nvdbFagdata) and not self.antall: 
 			self.statistikk()
-		# pdb.set_trace()
+
 		antObjLokalt = len(self.data['objekter'])
 		if debug: 
 			print( "Paginering?", self.paginering) 
@@ -249,6 +246,7 @@ class nvdbVegnett:
 
 	def update_http_header(self, filename='nvdbapi-clientinfo.json'): 
 	
+		contactsfile = 'nvdbapi-clientinfo.json'
 		# Http header info
 		try: 
 			with open(filename) as data_file:    
@@ -258,17 +256,17 @@ class nvdbVegnett:
 				self.headers = merge_dicts( self.headers, contacts) 
 
 				if 'X-Client' not in contacts.keys(): 
-					warn(' '.join(('No X-Client defined in ', contactsfile )) ) 
+					warn(' '.join(('No X-Client defined in ', filename )) ) 
 					
 				if 'X-Kontaktperson' not in contacts.keys(): 
-					warn(' '.join(('No X-Contact defined in ', contactsfile )) ) 
+					warn(' '.join(('No X-Contact defined in ', filename)) ) 
 
 			else: 
 				warn( 'X-Client and X-Contact not updated')
-				warn( ''.join(( 'Tror ikke ', contactsfile, 
+				warn( ''.join(( 'Tror ikke ', filename, 
 							' har riktig struktur', '\nSe dokumentasjon')) )
 				
-		except FileNotFoundError:
+		except IOError:
 			print( '---')
 			mytext = ' '.join( ('\nYou should provide the file', 
 							contactsfile,  '\n',   
@@ -383,7 +381,7 @@ class nvdbFagdata(nvdbVegnett):
 		Hvis ingen ID oppgis skriver vi ut en liste med ID, navn og type
 		for alle egenskapstyper for denne objekttypen. 
 		"""
-		# pdb.set_trace()
+
 		if len(arg) == 0: 
 			for eg in self.objektTypeDef['egenskapstyper']:
 				print( eg['id'], eg['navn'], eg['datatype_tekst'] )
