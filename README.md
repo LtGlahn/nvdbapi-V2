@@ -14,6 +14,8 @@ X-Client og X-Kontaktperson. Dermed har vi bedre statistikk over hvem som bruker
 og kan også nå ut til brukerne ved problemer. Denne informasjonen lese fra fila 
 *nvdbapi-clientinfo.json*; bruk gjerne malen  *nvdbapi-clientinfo-template.json* som utgangspunkt. 
 
+Funker både med python 2 og 3
+
 ## nvdbVegnett 
 
 Klasse for å hente veglenker fra NVDB api. 
