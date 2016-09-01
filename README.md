@@ -117,6 +117,22 @@ u = nvdbFagdata(570) # Trafikkulykker
 u.addfilter_overlapp( '105(2021=2738)') #  Trafikkulykker med fartsgrense = 80 km/t
 ```
 
+### egenskaper( egenskapsTypeID):
+
+Skriver ut definisjonen av angitt egenskapstype (ID, heltall). 
+Hvis ingen ID oppgis skriver vi ut en liste med ID, navn og type
+for alle egenskapstyper for denne objekttypen. 
+
+I stedet for ID (heltall) kan du også oppgi en tekststreng som sjekkes mot 
+navnet på egenskapstypene. 
+```
+p = nvdbFagdata( 809) # Døgnhvileplass 
+p.egenskaper()
+p.egenskaper(9270) # Vaskeplass for trailere
+p.egenskaper( 'ask') # Fritekst-søk, matcher ID 9270
+```
+
+
 # Egenskaper nvdbVegnett og nvdbFagdata
 
 Variabel | Verdi
