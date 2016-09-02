@@ -267,13 +267,11 @@ class nvdbVegnett:
 							' har riktig struktur', '\nSe dokumentasjon')) )
 				
 		except IOError:
-			print( '---')
 			mytext = ' '.join( ('\nYou should provide the file', 
 							contactsfile,  '\n',   
 					'\n{ "X-Client" : "YOUR SYSTEM",\n', 
 					'"X-Kontaktperson" : "ola.nordmann@eposten.din" }\n' ))
 			warn( mytext ) 
-			print( '---')
 
 
 
@@ -462,7 +460,7 @@ class nvdbFagdata(nvdbVegnett):
 			
 			# Warning users about a bug in NVDB api
 			if '*' in arg[0]:
-				warn( "Warning - bug in NVDB api for wildcard (*) text" + \
+				warn( "Warning - \nbug in NVDB api for wildcard (*) text" + \
 						"matching.\n" +  
 						"You'll probably find ZERO features with this filter") 
 			
