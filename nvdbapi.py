@@ -471,7 +471,15 @@ class nvdbFagdata(nvdbVegnett):
         else:
             return self.egenskapsfilter
 
-            
+    def nesteNvdbFagObjekt( self ): 
+        fagdata = self.nesteForekomst()
+        if fagdata: 
+            fagobj = nvdbFagObjekt(fagdata)
+            return( fagobj)
+        else: 
+            return None
+        
+
 class nvdbFagObjekt():
     
     def __init__( self, rawdata): 
@@ -489,6 +497,15 @@ class nvdbFagObjekt():
         """Returns property egenskap with ID or NAME (navn) = id_or_navn
         Optional keyword empty changes what you get if this property 
         does not exist (i.e. does not have value) for this data
+        The return value contains some metadata with ID's and stuff, 
+        example: 
+            {'navn': {'datatype': 1,
+              'datatype_tekst': 'Tekst',
+              'id': 8129,
+              'navn': 'Navn',
+              'verdi': 'Lofoten'}}
+
+        To just get the data value, use function egenskapverdi
         """
         
         try: 
@@ -514,7 +531,24 @@ class nvdbFagObjekt():
         else: 
             warn("Something weird with this property ID / name: "+id_or_navn )
             return empty 
-
+            
+    def egenskapverdi( self, id_or_navn, empty=None ):
+        """Returns the property VALUE with ID or NAME (navn) = id_or_navn
+        Just a convenient wraper around the egenskap - method, so you just 
+        get the data value (and not all metadata, with ID's and definitions)
+        """ 
+        egenskap = self.egenskap( id_or_navn, empty=empty)
+        if egenskap: 
+            return egenskap['verdi']
+        else: 
+            return egenskap
+            
+    def wkt( self):
+        """Returns the geometry of the object as Well Known text (WKT)
+        https://en.wikipedia.org/wiki/Well-known_text
+        """ 
+        return self.geometri['wkt']
+        
 def merge_dicts(*dict_args):
     """
     Python < 3.5 kompatibel kode for å slå sammen to eller flere dict. 

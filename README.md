@@ -88,6 +88,11 @@ while TF:
 
 # Flere metoder for nvdbFagdata
 
+### nesteNvdbFagObjekt() 
+
+Objektorientert tilnærming - returnerer neste forekomst av NVDB objektet som en instans av
+klassen [nvdbFagObjekt]
+
 ### info()
 
 Skriver til konsoll alle filtere og antall treff. 
@@ -137,6 +142,7 @@ p.egenskaper( 'ask') # Fritekst-søk, matcher ID 9270
 ```
 
 
+
 # Egenskaper nvdbVegnett og nvdbFagdata
 
 Variabel | Verdi
@@ -152,7 +158,31 @@ overlappfilter | Filter for overlapp mot andre fagdata (ikke nvdbVegnett)
 antall | Antall objekter i NVDB som tilfredsstiller kriteriene (ikke nvdbVegnett)
 strekningslengde | Total lengde på objektene i NVDB som tilfredsstiller søkekriteriene (ikke nvdbVegnett)
 
+# nvdbFagObjekt
+
+Klasse for objektorientert behandling av fagdata. 
+
+### egenskap( id_or_navn, empty=None)
+
+Returnerer egenskapstype (dataverdi pluss metadata). Via nøkkelordet empty kan man angi ønsket retur hvis egenskapen ikke finnes. 
+
+### egenskapverdi( id_or_navn, empty=None)
+
+Som funksjonen "egenskap", men returnerer kun egenskapsverdien (selve dataverdien). 
+
+
+### wkt 
+
+Returnerer koordinatene til objektets geometri som [Well Known Text](https://en.wikipedia.org/wiki/Well-known_text)
 
 # TO DO 
+======== 
 
-Smart håndtering av relasjoner. 
+ - [ ] Smart håndtering av relasjoner. 
+ - [ ] Litt snål oppførsel når du fyrer opp flere instanser av nvdbFagdata samtidig? Ser ut som om filtre og egenskapsverdier _"arves"_ fra den første instansen. Undersøkes nærmere
+ - [ ] Mere testing. 
+ 
+ 
+EKSEMPLER 
+======
+
