@@ -189,4 +189,6 @@ EKSEMPLER
 
 ### turistveger2geojson
 
-Leser NVDB fagdata 777 Turistveger og lagrer til GeoJson 
+Leser NVDB fagdata 777 Turistveger og lagrer til GeoJson. 
+
+> NB! Koordinatene burde vært tynnet for oversiktskart, ca 35mb totalt. Og vi får 3D koordinater, ikke helt sikker på hvor mange geojson-klienter som takler det like bra. 
