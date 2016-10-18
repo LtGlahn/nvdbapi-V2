@@ -91,7 +91,7 @@ while TF:
 ### nesteNvdbFagObjekt() 
 
 Objektorientert tilnærming - returnerer neste forekomst av NVDB objektet som en instans av
-klassen [nvdbFagObjekt]
+klassen [nvdbFagObjekt](https://github.com/LtGlahn/nvdbapi-V2#nvdbfagobjekt)
 
 ### info()
 
@@ -181,8 +181,12 @@ Returnerer koordinatene til objektets geometri som [Well Known Text](https://en.
  - [ ] Smart håndtering av relasjoner. 
  - [ ] Litt snål oppførsel når du fyrer opp flere instanser av nvdbFagdata samtidig? Ser ut som om filtre og egenskapsverdier _"arves"_ fra den første instansen. Undersøkes nærmere
  - [ ] Mere testing. 
+ - [ ] Fikse på turistveg-eksemplet: Tynning av geometri + kun 2D koordinater. 
  
  
 EKSEMPLER 
 ======
 
+### turistveger2geojson
+
+Leser NVDB fagdata 777 Turistveger og lagrer til GeoJson 
