@@ -207,7 +207,7 @@ barn = ettlop.relasjon(relasjon='barn')
 # TO DO 
 ======== 
 
- - [x] __Smart__ håndtering av relasjoner. 
+ - [x] ~~Smart~~ håndtering av relasjoner. 
  - [ ] Litt snål oppførsel når du fyrer opp flere instanser av nvdbFagdata samtidig? Ser ut som om filtre og egenskapsverdier _"arves"_ fra den første instansen. Undersøkes nærmere
  - [ ] Mere testing. 
  - [ ] Fikse på turistveg-eksemplet: Tynning av geometri + kun 2D koordinater. 
