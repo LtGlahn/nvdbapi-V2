@@ -178,8 +178,8 @@ Returnerer koordinatene til objektets geometri som [Well Known Text](https://en.
 
 Returnerer en liste med alle relasjoner (default, uten argumenter), eller 
 med nøkkelordet _relasjon=verdi_ returneres en liste med subsett
-av relasjoner. Mulige verdier for nøkkeord _relasjon_ er _barn_, _foreldre_ 
-eller egenskapsID eller navn til din favoritt objekttype. 
+av relasjoner. Mulige verdier for nøkkeord _relasjon_ er _barn_, _foreldre_, 
+_egenskapsID_ eller _egenskapsnavn_ til din favoritt objekttype. 
 
 eksempel: 
 
@@ -188,14 +188,19 @@ eksempel:
 tunnellop = nvdbapi.nvdbFagdata(67)
 ettLop = tunnellop.nesteNvdbFagObjekt()
 
-# Samme resulat, 3 metoder
+# Henter mor-tunnellen, 3 ulike metoder
 mor = ettLop.relasjon(relasjon='foreldre')
 mor = ettLop.relasjon(relasjon='Tunnel')
 mor = ettLop.relasjon(relasjon='581')
 
 # Henter datterobjekt Tunnelportal, 
-tp = ettlop.relasjon(relasjon='Tunnelport')
+tp = ettlop.relasjon(relasjon='Tunnelport') # Delvis match
+tp = ettlop.relasjon(relasjon='Tunnelportal') # Eksakt match
 tp = ettlop.relasjon(relasjon=69)
+
+# henter alle barn 
+barn = ettlop.relasjon(relasjon='barn')
+
 ```
 
 
