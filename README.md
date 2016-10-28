@@ -145,7 +145,7 @@ p.egenskaper( 'ask') # Fritekst-søk, matcher ID 9270
 
 # Egenskaper nvdbVegnett og nvdbFagdata
 
-Variabel | Verdi
+Variabel | Verdiæ
 ---------| --------
 data | Holder nedlastede data (i listen *objekter*) og metadata 
 geofilter | Geografisk filter
@@ -170,15 +170,39 @@ Returnerer egenskapstype (dataverdi pluss metadata). Via nøkkelordet empty kan 
 
 Som funksjonen "egenskap", men returnerer kun egenskapsverdien (selve dataverdien). 
 
-
 ### wkt 
 
 Returnerer koordinatene til objektets geometri som [Well Known Text](https://en.wikipedia.org/wiki/Well-known_text)
 
+### relasjon(relasjon=None)
+
+Returnerer en liste med alle relasjoner (default, uten argumenter), eller 
+med nøkkelordet _relasjon=verdi_ returneres en liste med subsett
+av relasjoner. Mulige verdier for nøkkeord _relasjon_ er _barn_, _foreldre_ 
+eller egenskapsID eller navn til din favoritt objekttype. 
+
+eksempel: 
+
+
+```python
+tunnellop = nvdbapi.nvdbFagdata(67)
+ettLop = tunnellop.nesteNvdbFagObjekt()
+
+# Samme resulat, 3 metoder
+mor = ettLop.relasjon(relasjon='foreldre')
+mor = ettLop.relasjon(relasjon='Tunnel')
+mor = ettLop.relasjon(relasjon='581')
+
+# Henter datterobjekt Tunnelportal, 
+tp = ettlop.relasjon(relasjon='Tunnelport')
+tp = ettlop.relasjon(relasjon=69)
+```
+
+
 # TO DO 
 ======== 
 
- - [ ] Smart håndtering av relasjoner. 
+ - [x] __Smart__ håndtering av relasjoner. 
  - [ ] Litt snål oppførsel når du fyrer opp flere instanser av nvdbFagdata samtidig? Ser ut som om filtre og egenskapsverdier _"arves"_ fra den første instansen. Undersøkes nærmere
  - [ ] Mere testing. 
  - [ ] Fikse på turistveg-eksemplet: Tynning av geometri + kun 2D koordinater. 

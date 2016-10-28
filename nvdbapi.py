@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import six # python 2 vs 3 compability library
 import json
 import requests
 from warnings import warn
@@ -481,6 +482,7 @@ class nvdbFagdata(nvdbVegnett):
         
 
 class nvdbFagObjekt():
+    """Class for NVDB objects, with methods to get data from them"""
     
     def __init__( self, rawdata): 
         
@@ -508,29 +510,21 @@ class nvdbFagObjekt():
         To just get the data value, use function egenskapverdi
         """
         
-        try: 
-            id = int(id_or_navn )
-            navn = None
-        except ValueError:
-            navn = id_or_navn
-            id = None
-
-        if id: 
+        
+        if id_or_navn.isdigit(): 
           
             for i, dic in enumerate( self.egenskaper): 
                 if dic['id'] == id: 
                     return dic
             return empty
             
-        elif navn: 
+        else: 
             
             for i, dic in enumerate( self.egenskaper): 
-                if dic['navn'] == navn: 
+                if dic['navn'] == id_or_navn: 
                     return dic
             return empty
-        else: 
-            warn("Something weird with this property ID / name: "+id_or_navn )
-            return empty 
+    
             
     def egenskapverdi( self, id_or_navn, empty=None ):
         """Returns the property VALUE with ID or NAME (navn) = id_or_navn
@@ -548,7 +542,64 @@ class nvdbFagObjekt():
         https://en.wikipedia.org/wiki/Well-known_text
         """ 
         return self.geometri['wkt']
+
+    def relasjon( self, relasjon=None): 
+        """Returns all or a subset of relations to other NVDB objects
+        Keyword relasjon='barn' or 'foreldre',  or the name or ID of the 
+        object type you wish were releated. 
+        """
         
+        if not relasjon: 
+            return self.relasjoner
+            
+        # Match on datakatalog ID
+        elif isinstance(relasjon, int) or relasjon.isdigit(): 
+            if isinstance( relasjon, str): 
+                relasjon = int(relasjon)
+                            
+            for key, liste in self.relasjoner.items():
+        
+                for elem in liste: 
+                    if elem['type']['id'] == relasjon:
+                        return elem
+     
+            return None
+            
+        elif isinstance( relasjon, six.string_types):
+            if relasjon.lower() == 'mor' or relasjon.lower() == 'foreldre': 
+                return self.relasjoner['foreldre']
+
+            elif  relasjon.lower() == 'barn' or relasjon.lower() == 'datter': 
+                return self.relasjoner['barn']                
+                
+                
+            else: 
+                
+                # Finding exact match - if any
+                for key, liste in self.relasjoner.items():
+
+                    for elem in liste: 
+                        if relasjon == elem['type']['navn']:
+                            print("Eksakt match")
+                            return elem
+                
+                # Finding partial match - if any 
+                for key, liste in self.relasjoner.items():
+                    for elem in liste: 
+                        if relasjon in elem['type']['navn']:
+                            return elem
+                    
+                    return None
+            
+            
+        else: 
+            # Raise error
+            raise ValueError('Keyword argument relasjon must be int or string', 
+                             + ', not ', + type(relasjon).relasjon.__name__ )
+            
+            
+            
+            
 def merge_dicts(*dict_args):
     """
     Python < 3.5 kompatibel kode for å slå sammen to eller flere dict. 

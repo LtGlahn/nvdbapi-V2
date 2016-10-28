@@ -15,6 +15,15 @@ import shapely.wkt
 # (on 64 bit machines you may choose 32 or 64 bit installations of python , 
 # so beware))
 
+def reverseShapelyCoords_dropZ(shapelygeom): 
+    """
+    Reverses the axis order (X,Y => Y,X) and drops the Z coordinate
+    from input shapely geometry object
+    """
+    
+    if type(shapelygeom) == 'shapely.geometry.multilinestring.MultiLineString':
+        pass
+
 
 turistveger = nvdbapi.nvdbFagdata(777)
 turistveger.respons['srid'] = 4326 # lat/lon coordinates
@@ -40,9 +49,9 @@ while turistveg1:
 
 # python 3 syntax 
 # For python 2.7 see http://stackoverflow.com/a/14870531 
-with open( 'turistveger.geojson', 'w' ) as fh:
+with open( 'turistveger.geojson', 'w', encoding='utf-8' ) as fh:
     json.dump(myGeojson, fh, ensure_ascii=False, indent=4 )
 
 # WARNING
 # This example produces 3D geometry (right now). Trying to fix that
-# The geometry could also do very well with some thinning. 
+# The geometry could also do very well with some thinning.  
