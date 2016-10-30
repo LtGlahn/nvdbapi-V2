@@ -571,12 +571,17 @@ class nvdbFagObjekt():
             return None
             
         elif isinstance( relasjon, six.string_types):
-            if relasjon.lower() == 'mor' or relasjon.lower() == 'foreldre': 
-                return self.relasjoner['foreldre']
+            if relasjon.lower() == 'mor' or relasjon.lower() == 'foreldre':
+                if 'foreldre' in self.relasjoner:
+                    return self.relasjoner['foreldre']
+                else: 
+                    return None
 
             elif  relasjon.lower() == 'barn' or relasjon.lower() == 'datter': 
-                return self.relasjoner['barn']                
-                
+                if 'barn' in self.relasjoner:
+                    return self.relasjoner['barn']                
+                else:
+                    return None
                 
             else: 
 
