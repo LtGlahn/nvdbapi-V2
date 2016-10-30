@@ -549,11 +549,16 @@ class nvdbFagObjekt():
         object type you wish were releated. 
         """
         
+        # If we have integers as strings => cast to int
+        # Makes the logic less messy... 
+        if isinstance( relasjon, six.string_types) and relasjon.isdigit():
+            relasjon = int(relasjon)
+        
         if not relasjon: 
             return self.relasjoner
             
-        # Match on datakatalog ID
-        elif isinstance(relasjon, int) or relasjon.isdigit(): 
+        # INT: Match on datakatalog ID
+        elif isinstance(relasjon, int): 
             if isinstance( relasjon, str): 
                 relasjon = int(relasjon)
                             
@@ -574,16 +579,16 @@ class nvdbFagObjekt():
                 
                 
             else: 
-                
-                # Finding exact match - if any
+
+        # Match on data catalogue name                 
+        # Finding exact match - if any
                 for key, liste in self.relasjoner.items():
 
                     for elem in liste: 
                         if relasjon == elem['type']['navn']:
-                            print("Eksakt match")
                             return elem
                 
-                # Finding partial match - if any 
+        # Finding partial match - if any 
                 for key, liste in self.relasjoner.items():
                     for elem in liste: 
                         if relasjon in elem['type']['navn']:
@@ -594,8 +599,7 @@ class nvdbFagObjekt():
             
         else: 
             # Raise error
-            raise ValueError('Keyword argument relasjon must be int or string', 
-                             + ', not ', + type(relasjon).relasjon.__name__ )
+            raise ValueError('Function relasjon: Keyword argument relasjon must be int or string' )
             
             
             

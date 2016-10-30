@@ -145,7 +145,7 @@ p.egenskaper( 'ask') # Fritekst-søk, matcher ID 9270
 
 # Egenskaper nvdbVegnett og nvdbFagdata
 
-Variabel | Verdiæ
+Variabel | Verdi
 ---------| --------
 data | Holder nedlastede data (i listen *objekter*) og metadata 
 geofilter | Geografisk filter
