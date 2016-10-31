@@ -487,13 +487,33 @@ class nvdbFagObjekt():
     def __init__( self, rawdata): 
         
         self.href = rawdata['href']
-        self.vegsegmenter   = rawdata['vegsegmenter']
-        self.geometri       = rawdata['geometri']
-        self.metadata       = rawdata['metadata']
         self.lokasjon       = rawdata['lokasjon']
-        self.egenskaper     = rawdata['egenskaper']
         self.id             = rawdata['id']
         self.relasjoner     = rawdata['relasjoner']
+        self.metadata       = rawdata['metadata']
+
+        # Litt klønete håndtering, ikke alle objekter som er knyttet til 
+        # gyldig vegnett - og de mangler lokasjonsdata
+        # Noen av disse mangler også egenskapsdata... 
+        if 'vegsegmenter' in rawdata:    
+            self.vegsegmenter   = rawdata['vegsegmenter']
+        else: 
+            warn(' '.join(['Ingen vegsegmenter i NVDB objekt', str(rawdata['id'])]) )
+            self.vegsegmenter = []
+
+        if 'geometri' in rawdata: 
+            self.geometri       = rawdata['geometri']
+        else: 
+            # warn('INGEN GEOMETRI')
+            warn(' '.join(['Ingen geometri i NVDB objekt', str(rawdata['id'])]) )
+            self.geometri = None
+
+        if 'egenskaper' in rawdata: 
+            self.egenskaper       = rawdata['egenskaper']
+        else: 
+            warn(' '.join(['Ingen egenskaper i NVDB objekt', str(rawdata['id'])]) )
+            self.egenskaper = []
+
         
     def egenskap( self, id_or_navn, empty=None ):
         """Returns property egenskap with ID or NAME (navn) = id_or_navn
