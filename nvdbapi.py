@@ -4,6 +4,7 @@ import six # python 2 vs 3 compability library
 import json
 import requests
 from warnings import warn
+#import pdb
 
 # Uncomment to silent those unverified https-request warnings
 requests.packages.urllib3.disable_warnings() 
@@ -530,20 +531,14 @@ class nvdbFagObjekt():
         To just get the data value, use function egenskapverdi
         """
         
-        
-        if id_or_navn.isdigit(): 
-          
-            for i, dic in enumerate( self.egenskaper): 
-                if dic['id'] == id: 
-                    return dic
-            return empty
-            
-        else: 
-            
-            for i, dic in enumerate( self.egenskaper): 
-                if dic['navn'] == id_or_navn: 
-                    return dic
-            return empty
+        for i, dic in enumerate( self.egenskaper): 
+            if dic['id'] == id_or_navn or str( id_or_navn) == dic['navn'] or \
+                        str( id_or_navn ).lower() in dic['navn'].lower() or \
+                        str(dic['id']) == str( id_or_navn): 
+
+                return dic
+
+        return empty 
     
             
     def egenskapverdi( self, id_or_navn, empty=None ):

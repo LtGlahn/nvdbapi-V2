@@ -166,9 +166,26 @@ Klasse for objektorientert behandling av fagdata.
 
 Returnerer egenskapstype (dataverdi pluss metadata). Via nøkkelordet empty kan man angi ønsket retur hvis egenskapen ikke finnes. 
 
+Argumentet _id_or_navn_ kan være heltall (datakatalog ID, mest skuddsikkert) eller (deler av) navnet på egenskapstypen. 
+
 ### egenskapverdi( id_or_navn, empty=None)
 
 Som funksjonen "egenskap", men returnerer kun egenskapsverdien (selve dataverdien). 
+
+eksempel:
+```python
+tunnellop = nvdbapi.nvdbFagdata(67)
+ettLop = tunnellop.nesteNvdbFagObjekt()
+
+ettLop.egenskap('Navn')
+ettLop.egenskap('MERK') # Gir første case *in*sensitiv treff på frasen "merk" i egenskapsnavnet. 
+
+# Angi at du vil ha tom streng (""), ikke None hvis egenskapstypen ikke finnes
+# (Nei, vi sjekker ikke om dette er en lovlig egenskap for denne objekttypen etter datakatalogen)
+tomStreng = ettLop.egenskapsverdi( 'finnes ikke', empty='')
+
+```
+
 
 ### wkt 
 
