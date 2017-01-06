@@ -186,8 +186,9 @@ ettLop.egenskapsverdi( 'Navn' )
 # Bruker datakatalog ID i stedet for navn (mer skuddsikkert)
 ettLop.egenskapsverdi( 1081 )
 
-# Forkortelser eller deler av egenskapsnavnet er OK (merk: Ingen sjekk på om dette er unikt, du får det første treffet)
-ettLop.egenskap('MERK') # Gir første case *in*sensitiv treff på frasen "merk" i egenskapsnavnet. 
+# Forkortelser eller deler av egenskapsnavnet er OK 
+#(merk: Ingen sjekk på om frasen matcher flere egenskapsnavn, du får det første treffet)
+ettLop.egenskap('MERK') # Gir første case *in*sensitive treff på frasen "merk" i egenskapsnavnet. 
 
 # Angi at du vil ha tom streng (""), ikke None hvis egenskapstypen ikke finnes
 # (Nei, vi sjekker ikke om dette er en lovlig egenskap for denne objekttypen etter datakatalogen)
