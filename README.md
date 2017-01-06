@@ -177,7 +177,16 @@ eksempel:
 tunnellop = nvdbapi.nvdbFagdata(67)
 ettLop = tunnellop.nesteNvdbFagObjekt()
 
+# Henter egenskapen "Navn" for dette tunnelløpet
 ettLop.egenskap('Navn')
+
+# Henter kun egenskapsverdien 
+ettLop.egenskapsverdi( 'Navn' )
+
+# Bruker datakatalog ID i stedet for navn (mer skuddsikkert)
+ettLop.egenskapsverdi( 1081 )
+
+# Forkortelser eller deler av egenskapsnavnet er OK (merk: Ingen sjekk på om dette er unikt, du får det første treffet)
 ettLop.egenskap('MERK') # Gir første case *in*sensitiv treff på frasen "merk" i egenskapsnavnet. 
 
 # Angi at du vil ha tom streng (""), ikke None hvis egenskapstypen ikke finnes
