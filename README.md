@@ -14,7 +14,7 @@ X-Client og X-Kontaktperson. Dermed har vi bedre statistikk over hvem som bruker
 og kan også nå ut til brukerne ved problemer. Denne informasjonen lese fra fila 
 *nvdbapi-clientinfo.json*; bruk gjerne malen  *nvdbapi-clientinfo-template.json* som utgangspunkt. 
 
-Funker både med python 2 og 3
+Hovedrutinen *nvdbapi.py* skal fungere både med python 2 og 3. Et par av eksemplene er skrevet i python 3, men det aller meste er bakoverkompatibelt med python 2 (dog med litt mindre god håndtering av UTF-8, dvs norske tegn). 
 
 ## nvdbVegnett 
 
