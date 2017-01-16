@@ -33,27 +33,30 @@ class nvdbVegnett:
 
     """
     
-    geofilter = {}
-    headers =   { 'accept' : 'application/vnd.vegvesen.nvdb-v2+json', 
-                        'X-Client' : 'nvdbapi.py',
-                        'X-Kontaktperson' : 'Anonymous'}
-    
-    paginering = { 'antall'         : 1000,     # Hvor mange obj vi henter samtidig.
-                            
-                            'hvilken'       : 0,    # iterasjon 
-                                                    # i det lokale datasettet 
-                                                    # Dvs i+1 til 
-                                                    # array self.data['objekter'] 
-                                                    # 
-                            'meredata'      : True, # Gjetning på om vi kan hente mere data
-                            'initielt'      : True # Initiell ladning av datasett
-                } 
-    
-    data = { 'objekter' : []}
     
     def __init__( self):
         
         self.update_http_header()
+        
+        self.geofilter = {}
+        self.headers =   { 'accept' : 'application/vnd.vegvesen.nvdb-v2+json', 
+                            'X-Client' : 'nvdbapi.py',
+                            'X-Kontaktperson' : 'Anonymous'}
+        
+        self.paginering = { 'antall'         : 1000,     # Hvor mange obj vi henter samtidig.
+                                
+                                'hvilken'       : 0,    # iterasjon 
+                                                        # i det lokale datasettet 
+                                                        # Dvs i+1 til 
+                                                        # array self.data['objekter'] 
+                                                        # 
+                                'meredata'      : True, # Gjetning på om vi kan hente mere data
+                                'initielt'      : True # Initiell ladning av datasett
+                    } 
+        
+        self.data = { 'objekter' : []}
+        
+        
 
 
     def nestePaginering(self):
@@ -315,7 +318,24 @@ class nvdbFagdata(nvdbVegnett):
     
     def __init__( self, objTypeID):
 
-        # Tomme datafelt
+
+        self.headers =   { 'accept' : 'application/vnd.vegvesen.nvdb-v2+json', 
+                        'X-Client' : 'nvdbapi.py',
+                        'X-Kontaktperson' : 'Anonymous'}
+    
+        self.paginering = { 'antall'         : 1000,     # Hvor mange obj vi henter samtidig.
+                            
+                            'hvilken'       : 0,    # iterasjon 
+                                                    # i det lokale datasettet 
+                                                    # Dvs i+1 til 
+                                                    # array self.data['objekter'] 
+                                                    # 
+                            'meredata'      : True, # Gjetning på om vi kan hente mere data
+                            'initielt'      : True # Initiell ladning av datasett
+                } 
+    
+        self.data = { 'objekter' : []}
+
         self.objektTypeId = None
         self.objektTypeDef = None
         self.antall = None
