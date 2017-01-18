@@ -36,12 +36,14 @@ class nvdbVegnett:
     
     def __init__( self):
         
-        self.update_http_header()
         
         self.geofilter = {}
         self.headers =   { 'accept' : 'application/vnd.vegvesen.nvdb-v2+json', 
                             'X-Client' : 'nvdbapi.py',
                             'X-Kontaktperson' : 'Anonymous'}
+                            
+        self.update_http_header()
+                            
         
         self.paginering = { 'antall'         : 1000,     # Hvor mange obj vi henter samtidig.
                                 
@@ -119,15 +121,15 @@ class nvdbVegnett:
             return False
         
     def nesteForekomst(self, debug=False): 
-        """Returnerer en enkelt forekomst av objekttypen. 
+        """Returnerer en enkelt forekomst av vegnettet. 
         Brukes for å iterere over mottatte data uten å bekymre seg 
         om evt paginering.
         Eksempel: 
-            n = nvdbFagdata(45)
-            bomst = n.nesteForekomst()
-            while bomst: 
-                print bomst.id # Gjør noe spennende med dette enkeltobjektet
-                bomst = n.nesteForekomst()
+            v = nvdbVegNett()
+            veg = v.nesteForekomst()
+            while veg: 
+                print veg.id # Gjør noe spennende med dette enkeltobjektet
+                veg = v.nesteForekomst()
         """
         if isinstance( self, nvdbFagdata) and not self.objektTypeId: 
             raise ValueError( '\n'.join(('ObjektTypeID mangler.',  
@@ -158,7 +160,7 @@ class nvdbVegnett:
 
             self.paginering['initielt'] = False
 
-            if self.data['metadata']['antall'] > 0: 
+            if self.data['metadata']['returnert'] > 0: 
                 self.paginering['hvilken'] = 1
                 return self.data['objekter'][0]
             else: 
