@@ -248,3 +248,7 @@ EKSEMPLER
 Leser NVDB fagdata 777 Turistveger og lagrer til GeoJson. 
 
 > NB! Koordinatene burde vært tynnet for oversiktskart, ca 35mb totalt. Og vi får 3D koordinater, ikke helt sikker på hvor mange geojson-klienter som takler det like bra. 
+
+### bomstasjoner-retninger.py
+
+En litt i overkant pirkete test av innkrevingsretning for bomstasjoner. Vi sjekker om bomstasjonens egenskaper stemmer overens med dens vegtilknytning (der innkrevingsretning _*egentlig*_ bestemmes). Videre sjekker vi vegnettets orientering og metreringsretning. Til sist legger vi på kompassretning for den reelle innkrevingsretningen. 
