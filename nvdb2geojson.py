@@ -3,6 +3,10 @@ import nvdbapi
 import geojson 
 import json 
 import shapely.wkt
+"""Lagre vegnett og fagdata fra NVDB til geojson. 
+Bruker klassene nvdbVegnett og nvdbFagdata fra nvdbapi.py
+""" 
+
 
 # How to install shapely on windows: 
 # http://deparkes.co.uk/2015/01/29/install-shapely-on-anaconda/ 
@@ -14,7 +18,6 @@ import shapely.wkt
 # (python 2.x or 3.x, 32 or 64 bit architecture of your PYTHON INSTALLATION
 # (on 64 bit machines you may choose 32 or 64 bit installations of python , 
 # so beware))
-
 
 
 def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False):

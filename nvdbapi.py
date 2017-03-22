@@ -9,7 +9,9 @@ from warnings import warn
 # Uncomment to silent those unverified https-request warnings
 requests.packages.urllib3.disable_warnings() 
 
-"""Den aller første starten på bibliotek for å hente data fra NVDB api V2 (og senere versjoner)"""
+"""Bibliotek for å hente data fra NVDB api V2 (og senere versjoner)
+Har 2 klasser, nvdbVegnett og nvdbFagdata
+"""
 
 class nvdbVegnett: 
     """Klasse for spørringer mot NVDB for å hente vegnett. 
