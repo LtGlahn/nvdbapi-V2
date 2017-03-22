@@ -282,7 +282,29 @@ class nvdbVegnett:
                     '"X-Kontaktperson" : "ola.nordmann@eposten.din" }\n' ))
             warn( mytext ) 
 
-
+    def vegnett2geojson(self, ignorewarning=False, maxcount=False):
+        """Konverterer vegnett til dict med geojson - struktur.  
+        Krever at du bruker områdefilter (geofilter), som settes med
+        funksjon addfilter_geo()
+        Uten områdefilter skulle bety at du laster ned data for hele landet 
+        Derfor returneres en advarsel pluss de lenkene som er i 
+        pagineringsbufferet  (typisk 1000). Dette kan overstyres med 
+        flagget ignorewarning=True. 
+        
+        Du kan også bruke flagget maxcount=100000 for å laste ned inntil et 
+        visst antal veglenker. 
+        
+        Eksempel
+        v = nvdbVegnett()
+        v.addfilter_geo( { 'kommune' : 1601, 'vegreferanse' : 'Ev6' })
+        gjson = v.vegnett2geojson) 
+        """ 
+        if not self.geofilter and not ignorewarning and not maxcount: 
+            warn( 'For mange lenker - bruk  ignorewarning=True for hele Norge' ) 
+            maxcount = 1000
+            
+        
+            
 
 class nvdbFagdata(nvdbVegnett): 
     """Klasse for spørringer mot NVDB ang en spesifikk objekttype. 
@@ -349,7 +371,6 @@ class nvdbFagdata(nvdbVegnett):
 
         # Standardverdier for responsen
         self.respons  = { 'inkluder' :  ['alle'], # Komma-separert liste
-                            'srid' : 32633, 
                             'geometritoleranse' : None, 
                             '' : True
                         }
