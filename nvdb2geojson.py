@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
+"""Lagre vegnett og fagdata fra NVDB til geojson. 
+Bruker klassene nvdbVegnett og nvdbFagdata fra nvdbapi.py
+
+Pga shapely-biblioteket, som kan være litt trælete å installere, har jeg 
+valgt å skille lagring til geojson fra resten. 
+
+""" 
 import nvdbapi
 import geojson 
 import json 
 import shapely.wkt
-"""Lagre vegnett og fagdata fra NVDB til geojson. 
-Bruker klassene nvdbVegnett og nvdbFagdata fra nvdbapi.py
-""" 
 
 
 # How to install shapely on windows: 
@@ -45,16 +49,9 @@ def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False):
         maxcount = 1000
         
     
-    mygeojson = {
-                    "type": "FeatureCollection",
-                    "crs": {
-                        "type": "name",
-                        "properties": {
-                            "name": "urn:ogc:def:crs:EPSG::25833"
-                        }
-                    },
-                    "features": []
-                }
+    mygeojson = geojsontemplate()
+    
+            
     
     v = vegnett.nesteForekomst()
     count = 0
@@ -79,4 +76,19 @@ def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False):
         v = vegnett.nesteForekomst()
 
     return mygeojson
+
+def fagdata2geojson( fagdata, maxcount=False): 
+    
+    
+def geojsontemplate():
+    return {
+                    "type": "FeatureCollection",
+                    "crs": {
+                        "type": "name",
+                        "properties": {
+                            "name": "urn:ogc:def:crs:EPSG::25833"
+                        }
+                    },
+                    "features": []
+                }
     
