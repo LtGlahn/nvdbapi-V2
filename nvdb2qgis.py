@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-import nvdbapi
+from nvdbapi import * 
 import nvdb2geojson
 import json
+from qgis.core import * 
+
 """
 Kommandolinjeverktøy for import av NVDB vegnett og fagdata til QGIS
 Bruker nvdb2geojson og mellomlagrer geojson som fil. 
@@ -11,7 +13,7 @@ definert i nvdbapi.py
 Før bruk må du sette områdefilter og evt egenskapsfilter
 """
 
-def nvdb2qgis( nvdbklasse, lagnavn): 
+def nvdb2qgislag(nvdbklasse, lagnavn, iface): 
     
     if isinstance( nvdbklasse, nvdbVegnett): 
         geojsondata = nvdb2geojson.vegnett2geojson( nvdbklasse)
@@ -20,9 +22,7 @@ def nvdb2qgis( nvdbklasse, lagnavn):
         print( "Ikke implementert!") 
         return 
     
-    with open( 'nvdbtmp.geojson') as f: 
-        json.dump( geojsondata, f)
-        
-    iface.addVectorLayer( 'nvdbtmp.geojson', lagnavn, 'ogr')
+    tmp = json.dumps( geojsondata )        
+    iface.addVectorLayer( tmp, lagnavn, 'ogr')
     
     
