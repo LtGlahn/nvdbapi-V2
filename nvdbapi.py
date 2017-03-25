@@ -59,6 +59,7 @@ class nvdbVegnett:
                     } 
         
         self.data = { 'objekter' : []}
+        self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
         
         
 
@@ -222,9 +223,8 @@ class nvdbVegnett:
 
     def anrope(self, path, parametre=None, debug=False): 
     
-        api = 'https://www.vegvesen.no/nvdb/api/v2/'
-        if not api in path: 
-            url = ''.join(( api, path)) 
+        if not self.apiurl in path: 
+            url = ''.join(( self.apiurl, path)) 
         else: 
             url = path 
         r = requests.get(url, params=parametre, headers=self.headers)
@@ -284,8 +284,37 @@ class nvdbVegnett:
                     '"X-Kontaktperson" : "ola.nordmann@eposten.din" }\n' ))
             warn( mytext ) 
 
-
-
+    def miljo(self, *args):
+        """Kun internt på vegvesen-nettet!
+        Kan endre hvilket miljø vi går mot.
+        Parametre: 
+            ingen - skriver lenken til NVDB api
+            'utv' - bruker UTVIKLINGSmiljøet
+            'test' - bruker TESTmiljø
+            'prod' - går mot PRODUKSJON
+        eksempel
+        b = nvdbFagdata(45)
+        b.miljo()
+        b.miljo('utv')
+        b.miljo('test')
+        b.miljo('prod')
+        """
+        
+        if args and isinstance( args[0], str): 
+            
+            if args[0].lower() == 'utv': 
+                self.apiurl = 'https://www.utv.vegvesen.no/nvdb/api/v2/'
+            elif args[0].lower() == 'test':
+                self.apiurl = 'https://www.test.vegvesen.no/nvdb/api/v2/'
+            elif args[0].lower() == 'prod': 
+                self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
+            else: 
+                print( "Forstod ikke parameter:", args[0])
+                print("Lovlige valg: utv, test eller prod")
+        
+        print( "Bruker ", self.apiurl)
+     
+            
 class nvdbFagdata(nvdbVegnett): 
     """Klasse for spørringer mot NVDB ang en spesifikk objekttype. 
     Jobber dynamisk mot NVDB api for å hente statistikk, laste ned data etc.
@@ -339,6 +368,7 @@ class nvdbFagdata(nvdbVegnett):
                 } 
     
         self.data = { 'objekter' : []}
+        self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
 
         self.objektTypeId = None
         self.objektTypeDef = None
