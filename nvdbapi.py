@@ -604,7 +604,22 @@ class nvdbFagObjekt():
             return egenskap['verdi']
         else: 
             return egenskap
+
+    def enumverdi( self, id_or_navn, empty=None): 
+        """Same as egenskapsverdi - but will return the ENUM code 
+        for ENUM values. For non-enum datatypes you will get 
+        your favourite empty-value (default: None) 
+        """ 
+        egenskap = self.egenskap( id_or_navn, empty=empty)
+        if egenskap and egenskap['datatype'] in [29,30]: 
+            return egenskap['enum_id']
+        else: 
+            return empty
             
+            
+        
+            
+
     def wkt( self):
         """Returns the geometry of the object as Well Known text (WKT)
         https://en.wikipedia.org/wiki/Well-known_text
