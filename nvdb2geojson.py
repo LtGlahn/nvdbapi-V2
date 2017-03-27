@@ -78,7 +78,7 @@ def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False):
     return mygeojson
 
 def fagdata2geojson( fagdata, maxcount=False): 
-    
+    pass
     
 def geojsontemplate():
     return {
