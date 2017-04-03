@@ -9,7 +9,9 @@ from warnings import warn
 # Uncomment to silent those unverified https-request warnings
 requests.packages.urllib3.disable_warnings() 
 
-"""Den aller første starten på bibliotek for å hente data fra NVDB api V2 (og senere versjoner)"""
+"""Bibliotek for å hente data fra NVDB api V2 (og senere versjoner)
+Har 2 klasser, nvdbVegnett og nvdbFagdata
+"""
 
 class nvdbVegnett: 
     """Klasse for spørringer mot NVDB for å hente vegnett. 
@@ -57,6 +59,7 @@ class nvdbVegnett:
                     } 
         
         self.data = { 'objekter' : []}
+        self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
         
         
 
@@ -220,9 +223,8 @@ class nvdbVegnett:
 
     def anrope(self, path, parametre=None, debug=False): 
     
-        api = 'https://www.vegvesen.no/nvdb/api/v2/'
-        if not api in path: 
-            url = ''.join(( api, path)) 
+        if not self.apiurl in path: 
+            url = ''.join(( self.apiurl, path)) 
         else: 
             url = path 
         r = requests.get(url, params=parametre, headers=self.headers)
@@ -282,8 +284,37 @@ class nvdbVegnett:
                     '"X-Kontaktperson" : "ola.nordmann@eposten.din" }\n' ))
             warn( mytext ) 
 
-
-
+    def miljo(self, *args):
+        """Kun internt på vegvesen-nettet!
+        Kan endre hvilket miljø vi går mot.
+        Parametre: 
+            ingen - skriver lenken til NVDB api
+            'utv' - bruker UTVIKLINGSmiljøet
+            'test' - bruker TESTmiljø
+            'prod' - går mot PRODUKSJON
+        eksempel
+        b = nvdbFagdata(45)
+        b.miljo()
+        b.miljo('utv')
+        b.miljo('test')
+        b.miljo('prod')
+        """
+        
+        if args and isinstance( args[0], str): 
+            
+            if args[0].lower() == 'utv': 
+                self.apiurl = 'https://www.utv.vegvesen.no/nvdb/api/v2/'
+            elif args[0].lower() == 'test':
+                self.apiurl = 'https://www.test.vegvesen.no/nvdb/api/v2/'
+            elif args[0].lower() == 'prod': 
+                self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
+            else: 
+                print( "Forstod ikke parameter:", args[0])
+                print("Lovlige valg: utv, test eller prod")
+        
+        print( "Bruker ", self.apiurl)
+     
+            
 class nvdbFagdata(nvdbVegnett): 
     """Klasse for spørringer mot NVDB ang en spesifikk objekttype. 
     Jobber dynamisk mot NVDB api for å hente statistikk, laste ned data etc.
@@ -337,6 +368,7 @@ class nvdbFagdata(nvdbVegnett):
                 } 
     
         self.data = { 'objekter' : []}
+        self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
 
         self.objektTypeId = None
         self.objektTypeDef = None
@@ -349,7 +381,6 @@ class nvdbFagdata(nvdbVegnett):
 
         # Standardverdier for responsen
         self.respons  = { 'inkluder' :  ['alle'], # Komma-separert liste
-                            'srid' : 32633, 
                             'geometritoleranse' : None, 
                             '' : True
                         }
@@ -507,7 +538,7 @@ class nvdbFagdata(nvdbVegnett):
 class nvdbFagObjekt():
     """Class for NVDB objects, with methods to get data from them"""
     
-    def __init__( self, rawdata): 
+    def __init__( self, rawdata, ignorewarnings=False): 
         
         self.href = rawdata['href']
         self.lokasjon       = rawdata['lokasjon']
@@ -521,21 +552,23 @@ class nvdbFagObjekt():
         if 'vegsegmenter' in rawdata:    
             self.vegsegmenter   = rawdata['vegsegmenter']
         else: 
-            warn(' '.join(['Ingen vegsegmenter i NVDB objekt', str(rawdata['id'])]) )
             self.vegsegmenter = []
+            if not ignorewarnings: 
+                warn(' '.join(['Ingen vegsegmenter i NVDB objekt', str(rawdata['id'])]) )
 
         if 'geometri' in rawdata: 
             self.geometri       = rawdata['geometri']
         else: 
-            # warn('INGEN GEOMETRI')
-            warn(' '.join(['Ingen geometri i NVDB objekt', str(rawdata['id'])]) )
             self.geometri = None
+            if not ignorewarnings: 
+                warn(' '.join(['Ingen geometri i NVDB objekt', str(rawdata['id'])]) )
 
         if 'egenskaper' in rawdata: 
             self.egenskaper       = rawdata['egenskaper']
         else: 
-            warn(' '.join(['Ingen egenskaper i NVDB objekt', str(rawdata['id'])]) )
             self.egenskaper = []
+            if not ignorewarnings: 
+                warn(' '.join(['Ingen egenskaper i NVDB objekt', str(rawdata['id'])]) )
 
         
     def egenskap( self, id_or_navn, empty=None ):
@@ -573,7 +606,22 @@ class nvdbFagObjekt():
             return egenskap['verdi']
         else: 
             return egenskap
+
+    def enumverdi( self, id_or_navn, empty=None): 
+        """Same as egenskapsverdi - but will return the ENUM code 
+        for ENUM values. For non-enum datatypes you will get 
+        your favourite empty-value (default: None) 
+        """ 
+        egenskap = self.egenskap( id_or_navn, empty=empty)
+        if egenskap and egenskap['datatype'] in [29,30]: 
+            return egenskap['enum_id']
+        else: 
+            return empty
             
+            
+        
+            
+
     def wkt( self):
         """Returns the geometry of the object as Well Known text (WKT)
         https://en.wikipedia.org/wiki/Well-known_text

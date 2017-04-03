@@ -195,7 +195,9 @@ ettLop.egenskap('MERK') # Gir første case *in*sensitive treff på frasen "merk"
 tomStreng = ettLop.egenskapsverdi( 'finnes ikke', empty='')
 
 ```
-
+### enumverdi( _id_or_navn, empty=None)
+Som funksjonen "egenskapsverdi", men returnerer enmu_id - ikke dataverdien. Vil returnere None (eller din "empty"-verdi) 
+hvis du bruker funksjonen på egenskaper som IKKE er enum (flervalg,tekst eller flervalg, tall). 
 
 ### wkt 
 
