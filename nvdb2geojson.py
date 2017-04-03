@@ -63,6 +63,14 @@ def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False):
         
         egenskaper = {}
         wktgeom = v['geometri'].pop( 'wkt')
+        
+            
+        vegref = v.pop( 'vegreferanse')
+        vegref['vrefkortform'] = vegref.pop( 'kortform')
+        
+        for k in vegref.keys():
+            egenskaper[k] = vegref[k]
+
         for k in v.keys():
             egenskaper[k] = v[k]
 
