@@ -538,7 +538,7 @@ class nvdbFagdata(nvdbVegnett):
 class nvdbFagObjekt():
     """Class for NVDB objects, with methods to get data from them"""
     
-    def __init__( self, rawdata): 
+    def __init__( self, rawdata, ignorewarnings=False): 
         
         self.href = rawdata['href']
         self.lokasjon       = rawdata['lokasjon']
@@ -552,21 +552,23 @@ class nvdbFagObjekt():
         if 'vegsegmenter' in rawdata:    
             self.vegsegmenter   = rawdata['vegsegmenter']
         else: 
-            warn(' '.join(['Ingen vegsegmenter i NVDB objekt', str(rawdata['id'])]) )
             self.vegsegmenter = []
+            if not ignorewarnings: 
+                warn(' '.join(['Ingen vegsegmenter i NVDB objekt', str(rawdata['id'])]) )
 
         if 'geometri' in rawdata: 
             self.geometri       = rawdata['geometri']
         else: 
-            # warn('INGEN GEOMETRI')
-            warn(' '.join(['Ingen geometri i NVDB objekt', str(rawdata['id'])]) )
             self.geometri = None
+            if not ignorewarnings: 
+                warn(' '.join(['Ingen geometri i NVDB objekt', str(rawdata['id'])]) )
 
         if 'egenskaper' in rawdata: 
             self.egenskaper       = rawdata['egenskaper']
         else: 
-            warn(' '.join(['Ingen egenskaper i NVDB objekt', str(rawdata['id'])]) )
             self.egenskaper = []
+            if not ignorewarnings: 
+                warn(' '.join(['Ingen egenskaper i NVDB objekt', str(rawdata['id'])]) )
 
         
     def egenskap( self, id_or_navn, empty=None ):

@@ -13,11 +13,12 @@ definert i nvdbapi.py
 Før bruk må du sette områdefilter og evt egenskapsfilter
 """
 
-def nvdb2qgislag(nvdbklasse, lagnavn, iface): 
+def nvdb2qgislag(nvdbklasse, lagnavn, iface, **kwargs): 
     
-    if isinstance( nvdbklasse, nvdbVegnett): 
-        geojsondata = nvdb2geojson.vegnett2geojson( nvdbklasse)
-        
+    if isinstance( nvdbklasse, nvdbFagdata):
+        geojsondata = nvdb2geojson.fagdata2geojson( nvdbklasse, **kwargs)
+    elif isinstance( nvdbklasse, nvdbVegnett): 
+        geojsondata = nvdb2geojson.vegnett2geojson( nvdbklasse, **kwargs)
     else: 
         print( "Ikke implementert!") 
         return 
