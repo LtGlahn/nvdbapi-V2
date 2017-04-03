@@ -100,21 +100,26 @@ def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=
     Mange vegobjekter er stedfestet på mer enn en veglenke/veglenkedel. I NVDB
     API er dette synlig ved at objektet går over mer enn ett vegsegment
     (ved å føye til parameter &inkluder=vegsegmenter i spørringen). Disse 
-    objektene vil typisk ha en MULTILINESTRING-geometri, satt sammen av 
-    LINESTRING-verdiene fra alle vegsegmentene. 
+    objektene vil typisk ha en MULTIPOINT/MULTILINESTRING-geometri, satt sammen av 
+    POINT/LINESTRING-verdiene fra alle vegsegmentene. Altså får du en blanding av 
+    LINE- og MULTILINE-string i resultatsettet. 
     
-    I slike tilfeller velger vi å opprette en unik geojson-feature per vegsegment. 
-    NVDB ID og egenskapsverdier blir like, og i tillegg numererer vi segmentene 
-    og oppgir hvor mange segmenter som inngår i det opprinnelige NVDB-fagobjektet. 
+    Default (vegsegmenter=True) er at vi oppretter en unik geojson-feature per 
+    vegsegment. NVDB ID og egenskapsverdier blir like, og i tillegg numererer 
+    vi segmentene og oppgir hvor mange segmenter som inngår i det opprinnelige 
+    NVDB-fagobjektet. (egenskapene "vegsegment nr", "antall vegsegment")
     
     Fordeler
         * Unike vegreferanser per geojson-feature(vegnummer, hp og meterverdier)
         * Unike veglenke-ID og veglenkeposisjon per geojson-feature
-        * Ingen MULTILINESTRING-geometri 
+        * Ingen MULTIPONT/MULTILINESTRING-geometri 
         
     Ulemper
         * Mister informasjon om egengeometri
         (vil bli valgbart i senere versjon)
+        
+    Alternativt kan man angi nøkkelord vegsegmenter=False. Da får man potensielt
+    en multi-geometri. Fordelen er at man får evt egengeometri (der det finnes)
     
     Eksempel
     f = ndbFagdata(105) # Fartsgrense
