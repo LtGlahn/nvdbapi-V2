@@ -122,6 +122,12 @@ Henter fagdata som overlapper med annen objekttype (evt med eget filter). Se dok
 ```
 u = nvdbFagdata(570) # Trafikkulykker
 u.addfilter_overlapp( '105(2021=2738)') #  Trafikkulykker med fartsgrense = 80 km/t
+
+
+# To overlappfilter: Liste med tekststrenger
+#  Trafikkulykker med fartsgrense = 80 km/t og 
+# rekkverk med bruksområde = midtdeler
+u.addfilter_overlapp( [ '105(2021=2738)', '5(1248=11788)'])
 ```
 
 ### egenskaper( egenskapsTypeID):
