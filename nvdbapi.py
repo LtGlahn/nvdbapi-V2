@@ -85,7 +85,7 @@ class nvdbVegnett:
                                     '\teller: N = nvdbFagData()',
                                     '       N.objektType(45)')))
         if isinstance( self, nvdbFagdata) and not self.antall: 
-            self.statistikk()
+           self.statistikk()
         
         if self.paginering['initielt']: 
         
@@ -139,7 +139,8 @@ class nvdbVegnett:
                                     '\tEks: N = nvdbFagData(45)', 
                                     '\teller: N = nvdbFagData()',
                                     '       N.objektType(45)')))
-        if isinstance( self, nvdbFagdata) and not self.antall: 
+
+        if isinstance( self, nvdbFagdata) and not self.antall:
             self.statistikk()
 
         antObjLokalt = len(self.data['objekter'])
@@ -221,7 +222,7 @@ class nvdbVegnett:
         else:
             return self.geofilter
 
-    def anrope(self, path, parametre=None, debug=False): 
+    def anrope(self, path, parametre=None, debug=False, silent=False): 
     
         if not self.apiurl in path: 
             url = ''.join(( self.apiurl, path)) 
@@ -241,7 +242,8 @@ class nvdbVegnett:
             return r.json()
         
         else:
-            print( 'Http error: '+str(r.status_code) +' '+r.url +
+            if not silent: 
+                print( 'Http error: '+str(r.status_code) +' '+r.url +
                             '\n' + r.text )
             raise ValueError('Http error: '+str(r.status_code) +' '+r.url +
                             '\n' + r.text )
@@ -692,7 +694,29 @@ class nvdbFagObjekt():
             raise ValueError('Function relasjon: Keyword argument relasjon must be int or string' )
             
             
+def finnid(objektid): 
+    """Henter NVDB objekt (enten veglenke eller fagdata) ut fra objektID.
+    Fagdata returnerer en DICT
+    Vegnett returnerer en LISTE med alle vegnettselementene for veglenka"""
+    
+    # Dummy objekt for å gjenbruke anrops-funksjonene
+    b = nvdbFagdata(45)
+    try:
+        res = b.anrope( 'vegobjekt', parametre = { 'id' : objektid }, silent=True )
+    except ValueError: 
+               
+        try: 
+            res = b.anrope( 'vegnett/lenker/' + str(objektid), silent=True)
             
+        except ValueError: 
+            print( "Fant intet NVDB objekt eller vegnett med ID = " + str(objektid))
+            return None
+        
+        return res
+    
+    # Må hente fagobjektet på ny for å få alle segmenter (inkluder=alle)
+    komplett = b.anrope( res['href'], parametre = { 'inkluder' : 'alle' } ) 
+    return komplett
             
 def merge_dicts(*dict_args):
     """
