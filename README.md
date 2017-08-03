@@ -237,7 +237,20 @@ tp = ettlop.relasjon(relasjon=69)
 barn = ettlop.relasjon(relasjon='barn')
 
 ```
+# finnid - finn fagdata eller vegnett ut fra NVDB Id
 
+Stand-alone funksjonen ```finnid(objektid)``` søker etter NVDB objekter og veglenker med angitt objektid. 
+
+```
+fart = nvdbapi.finnid(85288328) # python-dict
+fartobj = nvdbFagObjekt(fart)   # Objektorientert representasjon, med metoder som angitt over. 
+
+v = nvdbapi.finnid(521218)   # Veglenke
+```
+
+For fagdata returneres en DICT for angjeldende objekt. Denne kan gjøres om til et nvdbFagObjekt. 
+
+For vegnett returneres en liste med de veglenke-delene som inngår i denne veglenka. 
 
 # TO DO 
 ======== 
