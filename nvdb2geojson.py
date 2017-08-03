@@ -26,6 +26,33 @@ from warnings import warn
 # (on 64 bit machines you may choose 32 or 64 bit installations of python , 
 # so beware))
 
+def __addveg2geojson( vegseg, mygeojson ): 
+    """Internt metode, føyer til ett enkelt vegsegment til eksisterende geojson"""
+    
+    v = vegseg
+
+    egenskaper = {}
+    wktgeom = v['geometri'].pop( 'wkt')
+    
+        
+    vegref = v.pop( 'vegreferanse')
+    vegref['vrefkortform'] = vegref.pop( 'kortform')
+    
+    for k in vegref.keys():
+        egenskaper[k] = vegref[k]
+
+    for k in v.keys():
+        egenskaper[k] = v[k]
+
+    geom = shapely.wkt.loads( wktgeom)
+    
+    
+    mygeojson['features'].append( geojson.Feature(geometry=geom, 
+                                                  properties=egenskaper))
+        
+    
+    return mygeojson
+    
 
 def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False):
     """Konverterer NVDB vegnett til dict med geojson - struktur, men med 
@@ -47,46 +74,76 @@ def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False):
     v.addfilter_geo( { 'kommune' : 1601, 'vegreferanse' : 'Ev6' })
     gjson = v.vegnett2geojson) 
     """ 
-    if not vegnett.geofilter and not ignorewarning and not maxcount: 
-        warn( 'For mange lenker - bruk  ignorewarning=True for hele Norge' ) 
-        maxcount = 1000
-        
     
     mygeojson = geojsontemplate()
-    
-            
-    
-    v = vegnett.nesteForekomst()
-    count = 0
-    stopp = False
-    while v and not stopp:
-        
-        egenskaper = {}
-        wktgeom = v['geometri'].pop( 'wkt')
-        
-            
-        vegref = v.pop( 'vegreferanse')
-        vegref['vrefkortform'] = vegref.pop( 'kortform')
-        
-        for k in vegref.keys():
-            egenskaper[k] = vegref[k]
 
-        for k in v.keys():
-            egenskaper[k] = v[k]
-
-        geom = shapely.wkt.loads( wktgeom)
+    # Har vi et objekt for søk mot NVDB api?  
+    if isinstance( vegnett, nvdbVegnett) or isinstance( vegnett, nvdbapi.nvdbVegnett): 
+        if not vegnett.geofilter and not ignorewarning and not maxcount: 
+            warn( 'For mange lenker - bruk  ignorewarning=True for hele Norge' ) 
+            maxcount = 1000
         
-        
-        mygeojson['features'].append( geojson.Feature(geometry=geom, 
-                                                      properties=egenskaper))
-        
-        
-        count += 1
-        if maxcount and count >= maxcount: 
-            stopp = True 
         v = vegnett.nesteForekomst()
+        count = 0
+        stopp = False
+        while v and not stopp:
+    
+            mygeojson = __addveg2geojson( v, mygeojson)
+            
+            count += 1
+            if maxcount and count >= maxcount: 
+                stopp = True 
+            v = vegnett.nesteForekomst()
+
+    elif isinstance( vegnett, list) and 'konnekteringslenke' in vegnett[0].keys(): 
+        for v in vegnett: 
+            mygeojson = __addveg2geojson(v, mygeojson)
+    else: 
+        warn( 'Sorry, men gjenkjenner ikke dette som vegnettsdata')
 
     return mygeojson
+
+
+def __addfag2geojson( fag, mygeojson, vegsegmenter=True): 
+    """Internt metode, føyer til et NVDB fagobjekt til eksisterende geojson."""
+
+    # Egenskapsverdier
+    egenskaper = {}        
+    for k in fag['egenskaper']:
+        egenskaper[k['navn']] = k['verdi']
+
+    egenskaper['id'] = fag['id']
+    egenskaper['metadata'] = fag['metadata']
+        
+    if vegsegmenter: 
+    
+        # En ny feature per vegsegment 
+        egenskaper['antall vegsegmenter'] = len( fag['vegsegmenter'])
+        count = 0
+        for seg in fag['vegsegmenter']: 
+            eg = copy.deepcopy( egenskaper )
+            count += 1
+            eg['vegsegment nr'] = count
+            
+            geom = shapely.wkt.loads( seg['geometri']['wkt'])
+            
+            seg.pop('geometri')
+            vref = seg.pop( 'vegreferanse')
+            eg.update( vref)
+            eg.update(seg)
+            
+            mygeojson['features'].append( geojson.Feature(geometry=geom, 
+                                                          properties=eg))
+
+    else: 
+        geom = shapely.wkt.loads( fag['geometri']['wkt']  )
+        fag['lokasjon'].pop('geometri')
+        egenskaper['lokasjon'] = fag['lokasjon']
+        mygeojson['features'].append( geojson.Feature(geometry=geom, 
+                                                          properties=egenskaper))
+        
+    return mygeojson
+
 
 def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=True):
     """Konverterer NVDB fagdata til dict med geojson - struktur, men med 
@@ -116,7 +173,6 @@ def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=
         
     Ulemper
         * Mister informasjon om egengeometri
-        (vil bli valgbart i senere versjon)
         
     Alternativt kan man angi nøkkelord vegsegmenter=False. Da får man potensielt
     en multi-geometri. Fordelen er at man får evt egengeometri (der det finnes)
@@ -129,58 +185,25 @@ def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=
 
     mygeojson = geojsontemplate()
     
+    if isinstance( fagdata, nvdbFagdata ) or isinstance( fagdata, nvdbapi.nvdbFagdata): 
+
+        fag = fagdata.nesteForekomst()
+        count = 0
+        stopp = False
+        while fag and not stopp:
             
-    
-    v = fagdata.nesteForekomst()
-    count = 0
-    stopp = False
-    while v and not stopp:
-        
-        
-        # Egenskapsverdier
-        egenskaper = {}        
-        for k in v['egenskaper']:
-            egenskaper[k['navn']] = k['verdi']
-
-        egenskaper['id'] = v['id']
-        egenskaper['metadata'] = v['metadata']
-
-
+            mygeojson = __addfag2geojson( fag, mygeojson, vegsegmenter=vegsegmenter)        
             
-        if vegsegmenter: 
+            count += 1
+            if maxcount and count >= maxcount: 
+                stopp = True 
+                
+            fag = fagdata.nesteForekomst()
+
+    elif isinstance( fagdata, dict) and 'egenskaper' in fagdata.keys():
+        mygeojson = __addfag2geojson( fagdata, mygeojson, vegsegmenter=vegsegmenter)
         
-            # En ny feature per vegsegment 
-            egenskaper['antall vegsegmenter'] = len( v['vegsegmenter'])
-            count = 0
-            for seg in v['vegsegmenter']: 
-                eg = copy.deepcopy( egenskaper )
-                count += 1
-                eg['vegsegment nr'] = count
-                
-                geom = shapely.wkt.loads( seg['geometri']['wkt'])
-                
-                seg.pop('geometri')
-                vref = seg.pop( 'vegreferanse')
-                eg.update( vref)
-                eg.update(seg)
-                
-                mygeojson['features'].append( geojson.Feature(geometry=geom, 
-                                                              properties=eg))
-
-        else: 
-            geom = shapely.wkt.loads( v['geometri']['wkt']  )
-            v['lokasjon'].pop('geometri')
-            egenskaper['lokasjon'] = v['lokasjon']
-            mygeojson['features'].append( geojson.Feature(geometry=geom, 
-                                                              properties=egenskaper))
-
-        
-        count += 1
-        if maxcount and count >= maxcount: 
-            stopp = True 
-        v = fagdata.nesteForekomst()
-
-    return mygeojson    
+    return mygeojson
 
 
 def geojsontemplate():
