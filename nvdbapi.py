@@ -4,6 +4,7 @@ import six # python 2 vs 3 compability library
 import json
 import requests
 from warnings import warn
+import os
 #import pdb
 
 # Uncomment to silent those unverified https-request warnings
@@ -260,6 +261,11 @@ class nvdbVegnett:
     def update_http_header(self, filename='nvdbapi-clientinfo.json'): 
     
         contactsfile = 'nvdbapi-clientinfo.json'
+        
+        # Tricks for at qgis skal kunne finne klientinfo
+        if 'nvdbapi-dir' in os.environ.keys():
+            contactsfile = os.environ['nvdbapi-dir'] + '/' + contactsfile
+        
         # Http header info
         try: 
             with open(filename) as data_file:    

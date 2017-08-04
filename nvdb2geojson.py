@@ -54,7 +54,7 @@ def __addveg2geojson( vegseg, mygeojson ):
     return mygeojson
     
 
-def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False):
+def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False, vegsegmenter=True):
     """Konverterer NVDB vegnett til dict med geojson - struktur, men med 
     koordinater i UTM sone 33 (epsg:25833). Dette er ikke standard 
     geojson lenger, men vi angir det likevel i header. 
@@ -78,7 +78,7 @@ def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False):
     mygeojson = geojsontemplate()
 
     # Har vi et objekt for søk mot NVDB api?  
-    if isinstance( vegnett, nvdbVegnett) or isinstance( vegnett, nvdbapi.nvdbVegnett): 
+    if isinstance( vegnett, nvdbapi.nvdbVegnett): 
         if not vegnett.geofilter and not ignorewarning and not maxcount: 
             warn( 'For mange lenker - bruk  ignorewarning=True for hele Norge' ) 
             maxcount = 1000
@@ -185,7 +185,7 @@ def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=
 
     mygeojson = geojsontemplate()
     
-    if isinstance( fagdata, nvdbFagdata ) or isinstance( fagdata, nvdbapi.nvdbFagdata): 
+    if isinstance( fagdata, nvdbapi.nvdbFagdata): 
 
         fag = fagdata.nesteForekomst()
         count = 0
@@ -202,7 +202,8 @@ def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=
 
     elif isinstance( fagdata, dict) and 'egenskaper' in fagdata.keys():
         mygeojson = __addfag2geojson( fagdata, mygeojson, vegsegmenter=vegsegmenter)
-        
+    else: 
+        warn( "Sorry, gjenkjente ikke dette som NVDB fagdata" )
     return mygeojson
 
 
