@@ -34,12 +34,15 @@ def __addveg2geojson( vegseg, mygeojson ):
     egenskaper = {}
     wktgeom = v['geometri'].pop( 'wkt')
     
-        
-    vegref = v.pop( 'vegreferanse')
-    vegref['vrefkortform'] = vegref.pop( 'kortform')
+    if 'vegreferanse' in v.keys():     
+        vegref = v.pop( 'vegreferanse')
+        vegref['vrefkortform'] = vegref.pop( 'kortform')
     
-    for k in vegref.keys():
-        egenskaper[k] = vegref[k]
+        for k in vegref.keys():
+            egenskaper[k] = vegref[k]
+            
+    else: 
+        print( 'Ingen vegreferanse funnet for veglenke', v['kortform'])
 
     for k in v.keys():
         egenskaper[k] = v[k]
