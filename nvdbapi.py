@@ -700,29 +700,46 @@ class nvdbFagObjekt():
             raise ValueError('Function relasjon: Keyword argument relasjon must be int or string' )
             
             
-def finnid(objektid): 
+def finnid(objektid, kunvegnett=False, kunfagdata=False): 
     """Henter NVDB objekt (enten veglenke eller fagdata) ut fra objektID.
+    Bruk nøkkelord kunvegnett=True eller kunfagdata=True for å avgrense til 
+    vegnett og/eller fagdata (vi har betydelig overlapp på ID'er mellom vegnett 
+    og fagdata)
+    
     Fagdata returnerer en DICT
     Vegnett returnerer en LISTE med alle vegnettselementene for veglenka"""
     
     # Dummy objekt for å gjenbruke anrops-funksjonene
     b = nvdbFagdata(45)
-    try:
-        res = b.anrope( 'vegobjekt', parametre = { 'id' : objektid }, silent=True )
-    except ValueError: 
-               
+    res = None
+
+    # Henter fagdata    
+    if kunfagdata or (not kunvegnett): 
+        try:
+            res = b.anrope( 'vegobjekt', parametre = { 'id' : objektid }, silent=True )
+        except ValueError: 
+            pass
+
+        else:
+            # Må hente fagobjektet på ny for å få alle segmenter (inkluder=alle)
+            res = b.anrope( res['href'], parametre = { 'inkluder' : 'alle' } ) 
+
+
+    # Henter vegnett
+    if kunvegnett or (not kunfagdata) or (not res and not kunfagdata): 
         try: 
             res = b.anrope( 'vegnett/lenker/' + str(objektid), silent=True)
             
         except ValueError: 
-            print( "Fant intet NVDB objekt eller vegnett med ID = " + str(objektid))
-            return None
+            pass
+
+
+    if not res: 
+        print( "Fant intet NVDB objekt eller vegnett med ID = " + str(objektid))
+
         
-        return res
+    return res
     
-    # Må hente fagobjektet på ny for å få alle segmenter (inkluder=alle)
-    komplett = b.anrope( res['href'], parametre = { 'inkluder' : 'alle' } ) 
-    return komplett
             
 def merge_dicts(*dict_args):
     """
