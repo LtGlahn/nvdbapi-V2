@@ -7,7 +7,7 @@ import xmltodict
 import requests
 import json
 from shapely.wkt import loads as loadswkt  
-# import pdb
+import pdb
 import re
 import pyproj  
 from collections import OrderedDict
@@ -22,10 +22,11 @@ def askSSR( navn, bbox, debug=False):
     Plukker ut et koordinatpunkt og legger inn som E, N i UTM sone 32
     (epsg:25832)"""
     
+    navn2 = navn.strip()
     
     url = 'https://ws.geonorge.no/SKWS3Index/ssr/sok'
     params = {  'maxAnt' : '50', 
-        'navn' : navn + '*', 
+        'navn' : navn2 + '*', 
         'ostLL'     : bbox[0],
         'nordLL'    : bbox[1],
         'ostUR'     : bbox[2], 
@@ -39,33 +40,38 @@ def askSSR( navn, bbox, debug=False):
     if not r.ok: 
         # raise ImportError( "Kan ikke hente data fra SSR: %s" % r.url ) 
         print( "SSR søk feiler", r.text)
-        return( 0, r.url)
+        return( -1, r.url, None)
     else: 
 
         document =  xmltodict.parse( r.text )
         antGodeTreff = 0
         antSSRtreff = int( document['sokRes']['totaltAntallTreff'] )
+        SSR_navn = None
         
         if  antSSRtreff == 0: 
             pass
-            # Mer liberale oppslag mot 
+            
         elif antSSRtreff == 1: 
             if sjekkNavn( document['sokRes']['stedsnavn']): 
                 antGodeTreff = 1
+                SSR_navn = document['sokRes']['stedsnavn']['skrivemaatenavn']
             
         else: 
+            SSRnavneliste = []
             for elem in document['sokRes']['stedsnavn']: 
                 if sjekkNavn( elem ):
                     antGodeTreff += 1
-                
-        return ( antGodeTreff, r.url)
+                    
+                    SSRnavneliste.append( elem['skrivemaatenavn'])
+            SSR_navn = ','.join( SSRnavneliste )
+        return ( antGodeTreff, r.url, SSR_navn)
 
 def sjekkNavn( stedsnavn): 
     """Sjekker om stedsnavn-elementet fra SSR er det vi  vil ha"""
 
     godstatus = [ u'Vedtatt', u'Godkjent', u'Samlevedtak' ]
 
-    if stedsnavn['navnetype'] == u'Bru' and \
+    if stedsnavn['navnetype'] == u'Tunnel' and \
         stedsnavn['skrivemaatestatus'] in godstatus: 
         
         return True
@@ -82,7 +88,7 @@ def hentNvdbTunnel( debug = False):
 
 
     if debug: 
-        tunneller.addfilter_geo( {'kommune' : 1601 })
+        tunneller.addfilter_geo( {'kommune' : 1142 })
         
     resultat = []
     tunn = tunneller.nesteNvdbFagObjekt()
@@ -90,17 +96,20 @@ def hentNvdbTunnel( debug = False):
 
         if tunn.geometri: 
             tunndata = OrderedDict()
-            tunndata['Kommune'] = tunn.lokasjon['kommuner'][0]
             tunndata['Navn'] = tunn.egenskapverdi( 5225)
-            if not tunn.egenskapverdi(5225):
-                print( tunn.id, "Mangler navn")
+            tunndata['NVDB id'] = tunn.id
+
+#            if not tunn.egenskapverdi(5225):
+#                print( tunn.id, "Mangler navn")
             
             tunndata['Skiltet lengde'] = tunn.egenskapverdi(8945 )
             
-            if not tunn.egenskapverdi( 8945):
-                print( tunn.id, tunndata['Navn'], "Mangler skiltet lengde")
+#            if not tunn.egenskapverdi( 8945):
+#                print( tunn.id, tunndata['Navn'], "Mangler skiltet lengde")
             
             tunndata['Åpningsår'] = tunn.egenskapverdi( 10383 )
+            tunndata['Kommune'] = tunn.lokasjon['kommuner'][0]
+
             # Finner tunnelløp som datterobjekt av tunnel
             tunnellop = tunn.relasjon( 67)
             
@@ -108,6 +117,7 @@ def hentNvdbTunnel( debug = False):
             tunnbarn_maksOppgittLengde = 0
             tunnbarn_maksFysiskLengde = 0
             tunnbarn_aapningsaar = 0
+            tunnbarn_kommune = set()
             if tunnellop: 
                 tunnbarn_antall = len(tunnellop['vegobjekter'])
                 for tunn2id in tunnellop['vegobjekter']:
@@ -126,10 +136,13 @@ def hentNvdbTunnel( debug = False):
                         
                         tunnbarn_aapningsaar = min( tunnbarn_aapningsaar, 
                                         tunn2.egenskapverdi( 8356, empty=0))
+
+                        if tunn2.geometri:                      
+                            geom2 = loadswkt( tunn2.wkt())
+                            tunnbarn_maksFysiskLengde = max( geom2.length, 
+                                    tunnbarn_maksFysiskLengde)
                         
-                        geom2 = loadswkt( tunn2.wkt())
-                        tunnbarn_maksFysiskLengde = max( geom2.length, 
-                                tunnbarn_maksFysiskLengde)
+                        tunnbarn_kommune.update( tunn2.lokasjon['kommuner'] )
             else: 
                 print( tunn.id, tunndata['Navn'], "mangler tunnelløp")
     
@@ -144,21 +157,24 @@ def hentNvdbTunnel( debug = False):
             tunndata['Maks angitt lengde tunnelløp'] = tunnbarn_maksOppgittLengde
             tunndata['Maks fysisk lengde tunnelløp'] = tunnbarn_maksFysiskLengde
             tunndata['Åpningsår fra tunnelløp'] = tunnbarn_aapningsaar
+            tunndata['kommuner tunnelløp'] = ','.join( map( str, tunnbarn_kommune))
        
             geom = loadswkt( tunn.wkt())
                 # Har noen bruer der vegen er lagt ned => intet lokasjonsobjekt 
                 # i NVDB api'et. Trenger bedre håndtering av historikk... 
                 # Vi får fikse feilhåndtering når det tryner... 
     
-            bbox = geom.buffer(1000).bounds
-            (ssrtreff, ssrurl) = askSSR( tunndata['Navn'], bbox, debug=debug)         
+            bbox = geom.buffer(17000).bounds
+            (ssrtreff, ssrurl, ssrnavn) = askSSR( tunndata['Navn'], bbox, debug=debug)         
     
-            if ssrtreff == 0:
-                    match = 'INGEN'
+            if ssrtreff < 0:
+                match = 'FEILER'
+            elif ssrtreff == 0:
+                match = 'INGEN'
             elif ssrtreff == 1:
                 match = 'EKSAKT'
             elif ssrtreff > 1: 
-                match = 'FLERE?'
+                match = 'FLERE'
             
             tunndata['SSRtreff'] = match
             # Reprojiserer, 
@@ -168,13 +184,14 @@ def hentNvdbTunnel( debug = False):
     
             tunndata['X_utm32'] = x2
             tunndata['y_utm32'] = y2
-            
+            tunndata['SSR navn'] = ssrnavn
             tunndata['ssr_url'] = ssrurl
     
             resultat.append(tunndata)
             
         else: 
-            print( tunn.id, tunn.egenskapverdi('Navn', empty=''), 'er ikke stedfestet (historisk objekt?)')
+            print( tunn.id, tunn.egenskapverdi('Navn', empty=''), 
+                  'er ikke stedfestet (historisk objekt?)')
 
         tunn = tunneller.nesteNvdbFagObjekt()
 
@@ -185,6 +202,14 @@ if __name__ == '__main__':
 
     
     resultat = hentNvdbTunnel( debug=False)    
+    
+    with open( 'tunnelnavn_analyse20171013.csv', 'w', encoding='utf-8-sig', 
+                                                  newline='',) as outfile: 
+        w = csv.DictWriter(outfile, resultat[0].keys(), delimiter=';', 
+                                                    quoting=csv.QUOTE_ALL)
+        w.writeheader()
+        w.writerows(resultat)
+    
     # sluppen = nvdb.Objekt( nvdb.query( '/vegobjekter/objekt/272765437') )
     # svin = nvdb.Objekt( nvdb.query( '/vegobjekter/objekt/272299150') )
     # enkeltNvdbBru( sluppen)
