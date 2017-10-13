@@ -13,6 +13,45 @@ import pyproj
 from collections import OrderedDict
 import csv
 
+def kortinnnavn( navn): 
+    """Fjerner tunnel og anna tjafs fra slutten av NVDB-tunnelnavn"""
+    forbudsliste1 = [ 'kulvert',
+                        'miljø',
+                        'nordgående',
+                        'sørgående',
+                        'miljø',
+                        'viltlokk',
+                        'e',
+                        'eikefettunnelen små',
+                        'en',
+                        'en tunnel',
+                        'entunnelen',
+                        'et',
+                        'et tunnel',
+                        'ettunnelen',
+                        'etunnelen',
+                        'itunnelen',
+                        'overbygg',
+                        'songstadtunnelen i',
+                        'songstadtunnelen ii',
+                        'stunnelen',
+                        'sydnestunnelen vest',
+                        'sydnestunnelen øst',
+                        'tunelen',
+                        'tunellen',
+                        'tunnel',
+                        'tunnelen',
+                        'ALLE TALL', 
+                        'vegen', 
+                        'overbygg', 
+                        'Mellomrom pluss i, ii, iii i enden av ordet' 
+            ]
+    
+    forbudsliste2 = [  'iii', 'ii',  'i', 's', 'e', 'a', 'an' ] # Fjernes fra enden av ordet
+    
+    
+    
+    return navn 
 
 def askSSR( navn, bbox, debug=False): 
     """Slår opp i SSR på strengen navn. Wildcard-søk er støttet, ref
@@ -40,7 +79,7 @@ def askSSR( navn, bbox, debug=False):
     if not r.ok: 
         # raise ImportError( "Kan ikke hente data fra SSR: %s" % r.url ) 
         print( "SSR søk feiler", r.text)
-        return( -1, r.url, None)
+        return( 'FEILER', r.url, None)
     else: 
 
         document =  xmltodict.parse( r.text )
@@ -51,6 +90,14 @@ def askSSR( navn, bbox, debug=False):
         if  antSSRtreff == 0: 
             pass
             
+            if len(navn2) > 4: 
+                pass
+                # Kode for å fjerne tekst fra SLUTTEN av ordet. 
+                #  (match, ssrurl, ssrnavn) = askSSR( nyttnavn )
+#                if match in ['EKSAKT', 'FLERE']: 
+#                    match += '_kortform'
+                
+                # return( match, ssrurl, ssrnavn)
         elif antSSRtreff == 1: 
             if sjekkNavn( document['sokRes']['stedsnavn']): 
                 antGodeTreff = 1
@@ -64,7 +111,23 @@ def askSSR( navn, bbox, debug=False):
                     
                     SSRnavneliste.append( elem['skrivemaatenavn'])
             SSR_navn = ','.join( SSRnavneliste )
-        return ( antGodeTreff, r.url, SSR_navn)
+            
+        
+            
+            
+        return ( match, r.url, SSR_navn)
+
+
+
+#        if ssrtreff < 0:
+#            match = 'FEILER'
+#        elif ssrtreff == 0:
+#            match = 'INGEN'
+#        elif ssrtreff == 1:
+#            match = 'EKSAKT'
+#        elif ssrtreff > 1: 
+#            match = 'FLERE'
+
 
 def sjekkNavn( stedsnavn): 
     """Sjekker om stedsnavn-elementet fra SSR er det vi  vil ha"""
@@ -165,16 +228,9 @@ def hentNvdbTunnel( debug = False):
                 # Vi får fikse feilhåndtering når det tryner... 
     
             bbox = geom.buffer(17000).bounds
-            (ssrtreff, ssrurl, ssrnavn) = askSSR( tunndata['Navn'], bbox, debug=debug)         
+            (match, ssrurl, ssrnavn) = askSSR( tunndata['Navn'], bbox, debug=debug)         
     
-            if ssrtreff < 0:
-                match = 'FEILER'
-            elif ssrtreff == 0:
-                match = 'INGEN'
-            elif ssrtreff == 1:
-                match = 'EKSAKT'
-            elif ssrtreff > 1: 
-                match = 'FLERE'
+
             
             tunndata['SSRtreff'] = match
             # Reprojiserer, 
