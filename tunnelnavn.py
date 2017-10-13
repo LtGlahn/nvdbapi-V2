@@ -13,47 +13,61 @@ import pyproj
 from collections import OrderedDict
 import csv
 
-def kortinnnavn( navn): 
+def kortinnnavn( navn, ekstrasnill=False, debug=False): 
     """Fjerner tunnel og anna tjafs fra slutten av NVDB-tunnelnavn"""
+
+    if debug: 
+        print( navn)
+
+    
+    navn = navn.lower()
+    navn = navn.strip()
+    
+
+    # Fjerner alle tall
+    navn = re.sub( '\d+', '', navn)
+    
     forbudsliste1 = [ 'kulvert',
+                     'viltovergang',
                         'miljø',
                         'nordgående',
                         'sørgående',
                         'miljø',
+                        'vegen', 
+                        'overbygg', 
                         'viltlokk',
-                        'e',
-                        'eikefettunnelen små',
-                        'en',
-                        'en tunnel',
+                        'overbygg',
                         'entunnelen',
-                        'et',
-                        'et tunnel',
                         'ettunnelen',
                         'etunnelen',
                         'itunnelen',
-                        'overbygg',
-                        'songstadtunnelen i',
-                        'songstadtunnelen ii',
                         'stunnelen',
-                        'sydnestunnelen vest',
-                        'sydnestunnelen øst',
                         'tunelen',
                         'tunellen',
-                        'tunnel',
+                        'tunnellen',
                         'tunnelen',
-                        'ALLE TALL', 
-                        'vegen', 
-                        'overbygg', 
-                        'Mellomrom pluss i, ii, iii i enden av ordet' 
-            ]
+                        'tunnel',
+                        ' iii', ' ii',  ' i', ' vest', ' øst' ]
     
-    forbudsliste2 = [  'iii', 'ii',  'i', 's', 'e', 'a', 'an' ] # Fjernes fra enden av ordet
+    for forb in forbudsliste1: 
+        navn = re.sub( forb, '', navn).strip()
+        if debug: 
+            print( navn, ' => ', forb)
     
+    forbudsliste2 = [ 'en', # Til vurdering 
+                     'et', 'a', 'an', 's', 'e']    
     
+    if ekstrasnill: 
+        for forb in forbudsliste2:
+            # navn = navn.rstrip(forb).strip()
+            navn = re.sub(forb+'$', '', navn).strip()
+            if debug: 
+                print( navn, ' => ', forb)
+
     
     return navn 
 
-def askSSR( navn, bbox, debug=False): 
+def askSSR( navn, bbox, debug=False ): 
     """Slår opp i SSR på strengen navn. Wildcard-søk er støttet, ref
     SSR-dokumentasjonen. bbox er en shapely boundingBox-element, dvs en 
     liste med 4 koordinater (nedre venstre øst/nord og øvre høyre øst/nord)
@@ -72,38 +86,28 @@ def askSSR( navn, bbox, debug=False):
         'nordUR'    : bbox[3]
         }
     r = requests.get( url, params=params)
-    
+    ssrurl = r.url 
     if debug: 
         print( navn, r.url)
-    
+            
     if not r.ok: 
         # raise ImportError( "Kan ikke hente data fra SSR: %s" % r.url ) 
         print( "SSR søk feiler", r.text)
-        return( 'FEILER', r.url, None)
+        return( 'FEILER', r.url, navn2)
     else: 
 
         document =  xmltodict.parse( r.text )
         antGodeTreff = 0
         antSSRtreff = int( document['sokRes']['totaltAntallTreff'] )
         SSR_navn = None
-        
-        if  antSSRtreff == 0: 
-            pass
-            
-            if len(navn2) > 4: 
-                pass
-                # Kode for å fjerne tekst fra SLUTTEN av ordet. 
-                #  (match, ssrurl, ssrnavn) = askSSR( nyttnavn )
-#                if match in ['EKSAKT', 'FLERE']: 
-#                    match += '_kortform'
+        # pdb.set_trace()
                 
-                # return( match, ssrurl, ssrnavn)
-        elif antSSRtreff == 1: 
+        if antSSRtreff == 1: 
             if sjekkNavn( document['sokRes']['stedsnavn']): 
                 antGodeTreff = 1
                 SSR_navn = document['sokRes']['stedsnavn']['skrivemaatenavn']
             
-        else: 
+        elif antSSRtreff >= 1: 
             SSRnavneliste = []
             for elem in document['sokRes']['stedsnavn']: 
                 if sjekkNavn( elem ):
@@ -113,20 +117,17 @@ def askSSR( navn, bbox, debug=False):
             SSR_navn = ','.join( SSRnavneliste )
             
         
+        if antGodeTreff < 0:
+            match = 'FEILER'
+        elif antGodeTreff == 0:
+            match = 'INGEN'
+        elif antGodeTreff == 1:
+            match = 'EKSAKT'
+        elif antGodeTreff > 1: 
+            match = 'FLERE'
+        
             
-            
-        return ( match, r.url, SSR_navn)
-
-
-
-#        if ssrtreff < 0:
-#            match = 'FEILER'
-#        elif ssrtreff == 0:
-#            match = 'INGEN'
-#        elif ssrtreff == 1:
-#            match = 'EKSAKT'
-#        elif ssrtreff > 1: 
-#            match = 'FLERE'
+        return ( match, ssrurl, SSR_navn)
 
 
 def sjekkNavn( stedsnavn): 
@@ -151,7 +152,7 @@ def hentNvdbTunnel( debug = False):
 
 
     if debug: 
-        tunneller.addfilter_geo( {'kommune' : 1142 })
+        tunneller.addfilter_geo( {'kommune' : 105 })
         
     resultat = []
     tunn = tunneller.nesteNvdbFagObjekt()
@@ -160,12 +161,12 @@ def hentNvdbTunnel( debug = False):
         if tunn.geometri: 
             tunndata = OrderedDict()
             tunndata['Navn'] = tunn.egenskapverdi( 5225)
-            tunndata['NVDB id'] = tunn.id
+            tunndata['NVDB_id'] = tunn.id
 
 #            if not tunn.egenskapverdi(5225):
 #                print( tunn.id, "Mangler navn")
             
-            tunndata['Skiltet lengde'] = tunn.egenskapverdi(8945 )
+            tunndata['SkiltetLengde'] = tunn.egenskapverdi(8945 )
             
 #            if not tunn.egenskapverdi( 8945):
 #                print( tunn.id, tunndata['Navn'], "Mangler skiltet lengde")
@@ -209,7 +210,7 @@ def hentNvdbTunnel( debug = False):
             else: 
                 print( tunn.id, tunndata['Navn'], "mangler tunnelløp")
     
-            tunndata['Antall Tunnelløp'] = tunnbarn_antall
+            tunndata['AntallTunnelløp'] = tunnbarn_antall
             
             if tunnbarn_maksOppgittLengde == 0: 
                 tunnbarn_maksOppgittLengde = None
@@ -217,10 +218,10 @@ def hentNvdbTunnel( debug = False):
             if tunnbarn_aapningsaar == 0: 
                 tunnbarn_aapningsaar = None
             
-            tunndata['Maks angitt lengde tunnelløp'] = tunnbarn_maksOppgittLengde
-            tunndata['Maks fysisk lengde tunnelløp'] = tunnbarn_maksFysiskLengde
-            tunndata['Åpningsår fra tunnelløp'] = tunnbarn_aapningsaar
-            tunndata['kommuner tunnelløp'] = ','.join( map( str, tunnbarn_kommune))
+            tunndata['MaksAngittLengdeTunnelløp'] = tunnbarn_maksOppgittLengde
+            tunndata['MaksFysiskLengdeTunnelløp'] = tunnbarn_maksFysiskLengde
+            tunndata['ÅpningsårFraTunnelløp'] = tunnbarn_aapningsaar
+            tunndata['kommunerTunnelløp'] = ','.join( map( str, tunnbarn_kommune))
        
             geom = loadswkt( tunn.wkt())
                 # Har noen bruer der vegen er lagt ned => intet lokasjonsobjekt 
@@ -228,11 +229,29 @@ def hentNvdbTunnel( debug = False):
                 # Vi får fikse feilhåndtering når det tryner... 
     
             bbox = geom.buffer(17000).bounds
-            (match, ssrurl, ssrnavn) = askSSR( tunndata['Navn'], bbox, debug=debug)         
-    
+            (match, ssrurl, ssrnavn) = askSSR( tunndata['Navn'], 
+                                                            bbox, debug=debug)
+            soketerm = tunndata['Navn'].strip()
+            soketerm2 = None
+            if not ssrnavn: 
+                # pdb.set_trace()
+                soketerm = kortinnnavn( tunndata['Navn'], debug=debug)
+                (match, ssrurl, ssrnavn) = askSSR( soketerm, 
+                                                            bbox, debug=debug)
+                if match == 'EKSAKT': 
+                    match = 'EKSAKT-forenklet1'
+                if not ssrnavn: 
+                    soketerm2 = kortinnnavn( soketerm, ekstrasnill=True, 
+                                                               debug=debug)
+                    (match, ssrurl, ssrnavn) = askSSR( soketerm2, 
+                                                            bbox, debug=debug)
+                    if match == 'EKSAKT': 
+                        match = 'EKSAKT-forenklet2'
 
             
             tunndata['SSRtreff'] = match
+            tunndata['soketerm'] = soketerm
+            tunndata['soketerm2'] = soketerm2
             # Reprojiserer, 
             utm33 = pyproj.Proj('+init=EPSG:25833')
             utm32 = pyproj.Proj('+init=EPSG:25832')
