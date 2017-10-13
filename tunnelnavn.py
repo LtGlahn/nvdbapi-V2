@@ -11,6 +11,7 @@ from shapely.wkt import loads as loadswkt
 import re
 import pyproj  
 from collections import OrderedDict
+import csv
 
 
 def askSSR( navn, bbox, debug=False): 
@@ -36,7 +37,9 @@ def askSSR( navn, bbox, debug=False):
         print( navn, r.url)
     
     if not r.ok: 
-        raise ImportError( "Kan ikke hente data fra SSR: %s" % r.url ) 
+        # raise ImportError( "Kan ikke hente data fra SSR: %s" % r.url ) 
+        print( "SSR søk feiler", r.text)
+        return( 0, r.url)
     else: 
 
         document =  xmltodict.parse( r.text )
@@ -55,7 +58,7 @@ def askSSR( navn, bbox, debug=False):
                 if sjekkNavn( elem ):
                     antGodeTreff += 1
                 
-        return antGodeTreff
+        return ( antGodeTreff, r.url)
 
 def sjekkNavn( stedsnavn): 
     """Sjekker om stedsnavn-elementet fra SSR er det vi  vil ha"""
@@ -74,104 +77,115 @@ def hentNvdbTunnel( debug = False):
     
     tunneller = nvdbapi.nvdbFagdata(581)
     tunneller.addfilter_egenskap('5225!=null' )
-
+    # tunneller.addfilter_geo( {'fylke' : 18 })
+    # 
 
 
     if debug: 
-        pass        
-    
-     
-    header = [ 'Fylke', 'NVDBnavn', 'Lengde skiltet', 'E', 'N', 'NvdbId', 'Kommune', 'Match', 'SSRurl',  ]
+        tunneller.addfilter_geo( {'kommune' : 1601 })
+        
     resultat = []
-    resultat.append(header)
     tunn = tunneller.nesteNvdbFagObjekt()
     while tunn: 
 
-        
-        tunndata = OrderedDict()
-        tunndata['Navn'] = tunn.egenskapverdi( 5225)
-        if not tunn.egenskapverdi(5225):
-            print( tunn.id, "Mangler navn")
-        
-        tunndata['skiltLen'] = tunn.egenskapverdi(8945, empty=0 )
-        
-        if not tunn.egenskapverdi( 8945):
-            print( tunn.id, tunndata['Navn'], "Mangler skiltet lengde")
-        
-        # Finner tunnellbarn 
-        if tunn.relasjoner: 
-            for tunn2id in tunn.relasjoner['barn'][0]['vegobjekter']:
-                tmp = tunneller.anrope('vegobjekter/67/' + 
-                        str(tunn2id), parametre={"inkluder" : "alle"} ) 
-                tunn2 = nvdbapi.nvdbFagdata( tmp )
+        if tunn.geometri: 
+            tunndata = OrderedDict()
+            tunndata['Kommune'] = tunn.lokasjon['kommuner'][0]
+            tunndata['Navn'] = tunn.egenskapverdi( 5225)
+            if not tunn.egenskapverdi(5225):
+                print( tunn.id, "Mangler navn")
             
-        else: 
-            print( tunn.id, tunndata['Navn'], "mangler tunnelløp")
-
-        try:    
-            geom = loadswkt( nvdbObj.geometri(geometritype='geometriUtm33'))
-        except KeyError as e:
-            print( "Ingen geometri", navn, nvdbObj.id )
-            # Har noen bruer der vegen er lagt ned => intet lokasjonsobjekt 
-            # i NVDB api'et. Trenger bedre håndtering av historikk... 
+            tunndata['Skiltet lengde'] = tunn.egenskapverdi(8945 )
             
-        else: 
+            if not tunn.egenskapverdi( 8945):
+                print( tunn.id, tunndata['Navn'], "Mangler skiltet lengde")
+            
+            tunndata['Åpningsår'] = tunn.egenskapverdi( 10383 )
+            # Finner tunnelløp som datterobjekt av tunnel
+            tunnellop = tunn.relasjon( 67)
+            
+            tunnbarn_antall = 0
+            tunnbarn_maksOppgittLengde = 0
+            tunnbarn_maksFysiskLengde = 0
+            tunnbarn_aapningsaar = 0
+            if tunnellop: 
+                tunnbarn_antall = len(tunnellop['vegobjekter'])
+                for tunn2id in tunnellop['vegobjekter']:
+                    try: 
+                        tmp = tunneller.anrope('vegobjekter/67/' + 
+                            str(tunn2id), parametre={"inkluder" : "alle"} ) 
+                        
+                    except ValueError: 
+                        print( "finner ikke tunnelløp", tunn2id, "for",
+                              tunn.id, tunndata['Navn'])
+                    else: 
+                        tunn2 = nvdbapi.nvdbFagObjekt( tmp )
+                        
+                        tunnbarn_maksOppgittLengde = max( tunn2.egenskapverdi( 
+                                1317, empty=0), tunnbarn_maksOppgittLengde)
+                        
+                        tunnbarn_aapningsaar = min( tunnbarn_aapningsaar, 
+                                        tunn2.egenskapverdi( 8356, empty=0))
+                        
+                        geom2 = loadswkt( tunn2.wkt())
+                        tunnbarn_maksFysiskLengde = max( geom2.length, 
+                                tunnbarn_maksFysiskLengde)
+            else: 
+                print( tunn.id, tunndata['Navn'], "mangler tunnelløp")
+    
+            tunndata['Antall Tunnelløp'] = tunnbarn_antall
+            
+            if tunnbarn_maksOppgittLengde == 0: 
+                tunnbarn_maksOppgittLengde = None
+                
+            if tunnbarn_aapningsaar == 0: 
+                tunnbarn_aapningsaar = None
+            
+            tunndata['Maks angitt lengde tunnelløp'] = tunnbarn_maksOppgittLengde
+            tunndata['Maks fysisk lengde tunnelløp'] = tunnbarn_maksFysiskLengde
+            tunndata['Åpningsår fra tunnelløp'] = tunnbarn_aapningsaar
+       
+            geom = loadswkt( tunn.wkt())
+                # Har noen bruer der vegen er lagt ned => intet lokasjonsobjekt 
+                # i NVDB api'et. Trenger bedre håndtering av historikk... 
+                # Vi får fikse feilhåndtering når det tryner... 
+    
             bbox = geom.buffer(1000).bounds
-            pt = geom.centroid    
-            ssrtreff = askSSR( brunavn3, bbox, debug=debug)         
-            print( ssrtreff, "treff for", brunavn, 'lengde=', nvdbObj.egenskap(egenskapstype=1313) )
+            (ssrtreff, ssrurl) = askSSR( tunndata['Navn'], bbox, debug=debug)         
     
-            if ssrtreff == 1:
-                match = 'EKSAKT'
-                navn2 = ''
-                
-            elif ssrtreff == 0:
-                # Mer liberale søk i SSR 
-                navn2 = brunavn3.rsplit(' ', 1)[0].strip() + '*'
-                ssrtreff = askSSR( navn2, bbox) 
-                
-                print( "\t", ssrtreff, "treff for", navn2, 'lengde=', nvdbObj.egenskap(egenskapstype=1313) )
-                
-                if ssrtreff > 0: 
-                    match = navn2
-                else: 
+            if ssrtreff == 0:
                     match = 'INGEN'
-    
+            elif ssrtreff == 1:
+                match = 'EKSAKT'
             elif ssrtreff > 1: 
-                
                 match = 'FLERE?'
             
+            tunndata['SSRtreff'] = match
             # Reprojiserer, 
             utm33 = pyproj.Proj('+init=EPSG:25833')
             utm32 = pyproj.Proj('+init=EPSG:25832')
-            x2,y2 = pyproj.transform(utm33, utm32, pt.x, pt.y) 
+            x2,y2 = pyproj.transform(utm33, utm32, geom.x, geom.y) 
+    
+            tunndata['X_utm32'] = x2
+            tunndata['y_utm32'] = y2
             
-            liste = [ nvdbObj.data['lokasjon']['fylke']['nummer'], 
-                        brunavn,
-                        int(round( float( nvdbObj.egenskap(egenskapstype=1313)))) , # Lengde
-                        int(round(x2)), int(round(y2)),                # Nord/øst koordiant
-                        nvdbObj.id, match ]
+            tunndata['ssr_url'] = ssrurl
+    
+            resultat.append(tunndata)
             
-            resultat.append( liste) 
-            
+        else: 
+            print( tunn.id, tunn.egenskapverdi('Navn', empty=''), 'er ikke stedfestet (historisk objekt?)')
+
         tunn = tunneller.nesteNvdbFagObjekt()
 
     return resultat
-    nvdb.csv_skriv( 'brunavn.csv', resultat) 
+    # nvdb.csv_skriv( 'brunavn.csv', resultat)
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
+
     
-    print( "hello", "world")
-    # resultat = hentNvdbTunnel( debug=False)
-    
+    resultat = hentNvdbTunnel( debug=False)    
     # sluppen = nvdb.Objekt( nvdb.query( '/vegobjekter/objekt/272765437') )
     # svin = nvdb.Objekt( nvdb.query( '/vegobjekter/objekt/272299150') )
-
-    # enkeltNvdbBru( sluppen) 
-    # enkeltNvdbBru( svin) 
-    
-    
-    
-    
-
-
+    # enkeltNvdbBru( sluppen)
+    # enkeltNvdbBru( svin)
