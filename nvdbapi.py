@@ -5,6 +5,7 @@ import json
 import requests
 from warnings import warn
 import os
+from copy import deepcopy
 #import pdb
 
 # Uncomment to silent those unverified https-request warnings
@@ -454,6 +455,21 @@ class nvdbFagdata(nvdbVegnett):
                 if eg['id'] == arg[0] or str(arg[0]) in eg['navn']: 
                     print( json.dumps( eg, indent=4)) 
         
+    def egenskaper_fastskjema( self, missing=None): 
+        """Returnerer enkel mal for ALLE egenskaper etter datakatalogen. 
+        (uten reelle data). Bruk missing-nøkkelord om du vil ha annen "tom" 
+        verdi enn None. 
+        
+        Brukes for de tilfellene der du trenger data ihht fastlagt skjema, 
+        f.eks. CSV-dump eller tilsvarende 
+        """ 
+        
+        data = {}
+        for eg in self.objektTypeDef['egenskapstyper']:
+                data[eg['navn']] = missing
+                
+        return data
+        
         
     def allfilters( self): 
         """Returns a dict with all current filters""" 
@@ -627,8 +643,16 @@ class nvdbFagObjekt():
             return empty
             
             
+    def egenskapverdier_fastskjema(self, skjema  ): 
+        """Fyller ut skjema med de egenskapsverdiene som matcher egenskapsnavn"""
         
+        skjem2 = deepcopy( skjema)
+        for eg in self.egenskaper: 
+            if eg['navn'] in skjem2.keys():
+                skjem2[eg['navn']] = eg['verdi']
             
+        return skjem2
+        
 
     def wkt( self):
         """Returns the geometry of the object as Well Known text (WKT)
