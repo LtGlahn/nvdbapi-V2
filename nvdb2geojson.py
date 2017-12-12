@@ -49,10 +49,17 @@ def __addveg2geojson( vegseg, mygeojson ):
 
     geom = shapely.wkt.loads( wktgeom)
     
-    
-    mygeojson['features'].append( geojson.Feature(geometry=geom, 
-                                                  properties=egenskaper))
-        
+    if geom.type == 'LineString':
+        mygeojson['features'].append( geojson.Feature(geometry=geom, 
+                                                      properties=egenskaper))
+    elif 'vrefkortform' in vegref.keys(): 
+        print( 'Degenerert bit av veglenke (punkt, ikke linje)', 
+              vegref['vrefkortform'], vegseg['kortform'] ) 
+    else: 
+        print( 'Degenerert bit av veglenke (punkt, ikke linje)', 
+              vegseg['kortform'] ) 
+
+                
     
     return mygeojson
     
@@ -107,13 +114,16 @@ def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False, vegsegmenter=T
     return mygeojson
 
 
-def __addfag2geojson( fag, mygeojson, vegsegmenter=True): 
+def __addfag2geojson( fag, mygeojson, vegsegmenter=True, 
+                     ignoreregenskaper=False, ignorervegref=False): 
     """Internt metode, føyer til et NVDB fagobjekt til eksisterende geojson."""
 
     # Egenskapsverdier
-    egenskaper = {}        
-    for k in fag['egenskaper']:
-        egenskaper[k['navn']] = k['verdi']
+    egenskaper = {}
+    
+    if not ignoreregenskaper: 
+        for k in fag['egenskaper']:
+            egenskaper[k['navn']] = k['verdi']
 
     egenskaper['id'] = fag['id']
     egenskaper['metadata'] = fag['metadata']
@@ -132,9 +142,16 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True):
             
             seg.pop('geometri')
             vref = seg.pop( 'vegreferanse')
-            eg.update( vref)
-            eg.update(seg)
+            stedfesting = seg.pop( 'stedfesting')
+            eg.update( stedfesting )
             
+            if not ignorervegref: 
+                eg.update( vref)
+                eg.update(seg)
+            else: 
+                eg['kortform'] = vref['kortform']
+             
+    
             mygeojson['features'].append( geojson.Feature(geometry=geom, 
                                                           properties=eg))
 
@@ -148,14 +165,36 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True):
     return mygeojson
 
 
-def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=True):
-    """Konverterer NVDB fagdata til dict med geojson - struktur, men med 
-    koordinater i UTM sone 33 (epsg:25833). Dette er ikke standard 
-    geojson lenger, men vi angir det likevel i header. 
+def fagdata2geojson( fagdata, maxcount=False, 
+                    vegsegmenter=True, ignoreregenskaper=False, ignorervegref=False):
+    """Konverterer NVDB fagdata til geojson feature collection NB utm sone 33
+    UTM sone 33 (epsg:25833) er ikke standard geojson lenger, men vi angir 
+    det likevel i header. 
     
-    
-    Du kan også bruke flagget maxcount=<tall> for å laste ned inntil et 
-    visst antall vegobjekter. 
+    Args: 
+        fagdata : nvdbFagObjekt fra nvdbapi.py (søkeobjekt som henter data fra 
+                    NVDB api)
+        
+    Keywords: 
+        maxcount (0) Integer : Barnesikring, default av. Skru på ved å angi 
+                    heltall større enn 0. 
+        
+        vegsegmenter (True) Boolean : Lag et objekt per vegsegment hvis 
+                    stedfestet på mer enn ett vegsegment
+                    Se forklaring under. 
+        
+        ignoreegenskaper (False) Boolean : Dropp egenskapsverdier
+        
+        ignorevegref (False) Boolean : Dropp vegreferanse-detaljer 
+        
+    Returns: 
+        Python Dict geojson feature collections
+ 
+   Eksempel
+        f = ndbFagdata(105) # Fartsgrense
+        f.addfilter_geo( { 'kommune' : 1601, 'vegreferanse' : 'Ev6' })
+        gjson = fagdata2geojson( f) 
+     
     
     Mange vegobjekter er stedfestet på mer enn en veglenke/veglenkedel. I NVDB
     API er dette synlig ved at objektet går over mer enn ett vegsegment
@@ -180,10 +219,6 @@ def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=
     Alternativt kan man angi nøkkelord vegsegmenter=False. Da får man potensielt
     en multi-geometri. Fordelen er at man får evt egengeometri (der det finnes)
     
-    Eksempel
-    f = ndbFagdata(105) # Fartsgrense
-    f.addfilter_geo( { 'kommune' : 1601, 'vegreferanse' : 'Ev6' })
-    gjson = fagdata2geojson( f) 
     """ 
 
     mygeojson = geojsontemplate()
@@ -195,7 +230,9 @@ def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=
         stopp = False
         while fag and not stopp:
             
-            mygeojson = __addfag2geojson( fag, mygeojson, vegsegmenter=vegsegmenter)        
+            mygeojson = __addfag2geojson( fag, mygeojson, 
+                vegsegmenter=vegsegmenter, ignoreregenskaper=ignoreregenskaper, 
+                ignorervegref=ignorervegref)        
             
             count += 1
             if maxcount and count >= maxcount: 
@@ -204,11 +241,12 @@ def fagdata2geojson( fagdata, ignorewarning=False, maxcount=False, vegsegmenter=
             fag = fagdata.nesteForekomst()
 
     elif isinstance( fagdata, dict) and 'egenskaper' in fagdata.keys():
-        mygeojson = __addfag2geojson( fagdata, mygeojson, vegsegmenter=vegsegmenter)
+        mygeojson = __addfag2geojson( fagdata, mygeojson, 
+            vegsegmenter=vegsegmenter, ignoreregenskaper=ignoreregenskaper, 
+            ignorervegref=ignorervegref)
     else: 
         warn( "Sorry, gjenkjente ikke dette som NVDB fagdata" )
     return mygeojson
-
 
 def geojsontemplate():
     return {
