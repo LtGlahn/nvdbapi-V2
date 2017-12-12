@@ -114,9 +114,34 @@ def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False, vegsegmenter=T
     return mygeojson
 
 
+def __geometritypefilter( shapelygeometri, geometritype='' ): 
+    """Internt metode for å filtrere vekk de geometritypene man ikke vil ha
+    
+    Følger datakatalog-syntaksen 'PUNKT', 'LINJE', ... 
+    
+    Returnerer True | False alt ettersom geometritypen stemmer
+    """
+
+    if geometritype == '': # Matcher alt 
+        return True
+
+    elif geometritype == 'PUNKT' and shapelygeometri.type == 'Point': 
+        return True
+        
+    elif geometritype == 'LINJE' and shapelygeometri.type == 'LineString': 
+        return True 
+    
+    return False
+    
+
 def __addfag2geojson( fag, mygeojson, vegsegmenter=True, 
-                     ignoreregenskaper=False, ignorervegref=False): 
-    """Internt metode, føyer til et NVDB fagobjekt til eksisterende geojson."""
+                     ignoreregenskaper=False, ignorervegref=False, 
+                     geometrityper=''): 
+    """Internt metode, føyer til et NVDB fagobjekt til eksisterende geojson.
+    
+    geometrityper filtrerer ut de geometritypene man vil ha. Følger 
+    datakatalog-syntaksen 'PUNKT', 'LINJE', ... 
+    """
 
     # Egenskapsverdier
     egenskaper = {}
@@ -151,22 +176,32 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
             else: 
                 eg['kortform'] = vref['kortform']
              
-    
-            mygeojson['features'].append( geojson.Feature(geometry=geom, 
-                                                          properties=eg))
+            if __geometritypefilter( geom, geometritype=geometrityper): 
+                mygeojson['features'].append( geojson.Feature(geometry=geom, 
+                                                              properties=eg))
+            else: 
+                print( str(fag['id']), 'Ignorerte geometritype', geom.type, 
+                          'vil ha', str( geometrityper))
 
     else: 
         geom = shapely.wkt.loads( fag['geometri']['wkt']  )
         fag['lokasjon'].pop('geometri')
         egenskaper['lokasjon'] = fag['lokasjon']
-        mygeojson['features'].append( geojson.Feature(geometry=geom, 
+        
+        if __geometritypefilter( geom, geometritype=geometrityper): 
+            mygeojson['features'].append( geojson.Feature(geometry=geom, 
                                                           properties=egenskaper))
+        else: 
+            print( str(fag['id']),  'Ignorerte geometritype', geom.type, 
+                  'vil ha', str( geometrityper)) 
+
         
     return mygeojson
 
 
 def fagdata2geojson( fagdata, maxcount=False, 
-                    vegsegmenter=True, ignoreregenskaper=False, ignorervegref=False):
+                    vegsegmenter=True, ignoreregenskaper=False, 
+                    ignorervegref=False, strictGeometryType=True):
     """Konverterer NVDB fagdata til geojson feature collection NB utm sone 33
     UTM sone 33 (epsg:25833) er ikke standard geojson lenger, men vi angir 
     det likevel i header. 
@@ -186,6 +221,10 @@ def fagdata2geojson( fagdata, maxcount=False,
         ignoreegenskaper (False) Boolean : Dropp egenskapsverdier
         
         ignorevegref (False) Boolean : Dropp vegreferanse-detaljer 
+        
+        strictGeometryType (True) Boolean : Krev at geometritypen er slik som 
+                    definert i datakatalogen. Medfører f.eks at vi ignorerer 
+                    linjer som har degenerert til punkt (pga kort utstrekning)
         
     Returns: 
         Python Dict geojson feature collections
@@ -224,6 +263,11 @@ def fagdata2geojson( fagdata, maxcount=False,
     mygeojson = geojsontemplate()
     
     if isinstance( fagdata, nvdbapi.nvdbFagdata): 
+        
+        if strictGeometryType: 
+            geometrityper = fagdata.objektTypeDef['stedfesting'] 
+        else: 
+            geometrityper = ''
 
         fag = fagdata.nesteForekomst()
         count = 0
@@ -232,7 +276,7 @@ def fagdata2geojson( fagdata, maxcount=False,
             
             mygeojson = __addfag2geojson( fag, mygeojson, 
                 vegsegmenter=vegsegmenter, ignoreregenskaper=ignoreregenskaper, 
-                ignorervegref=ignorervegref)        
+                ignorervegref=ignorervegref, geometrityper=geometrityper)        
             
             count += 1
             if maxcount and count >= maxcount: 
@@ -243,7 +287,7 @@ def fagdata2geojson( fagdata, maxcount=False,
     elif isinstance( fagdata, dict) and 'egenskaper' in fagdata.keys():
         mygeojson = __addfag2geojson( fagdata, mygeojson, 
             vegsegmenter=vegsegmenter, ignoreregenskaper=ignoreregenskaper, 
-            ignorervegref=ignorervegref)
+            ignorervegref=ignorervegref, geometrityper=geometrityper)
     else: 
         warn( "Sorry, gjenkjente ikke dette som NVDB fagdata" )
     return mygeojson
