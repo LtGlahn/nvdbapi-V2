@@ -69,14 +69,14 @@ def finnveglenkeoverlapp( finndette, blantdisse):
 
     NB! Skalerer dårlig, bruk kun på små datamengder! 
     
-    NB! Vi lager ikke ny segmentering. 
-    Dvs vi tar ikke hensyn til om finndette-segmentet har større 
-    utstrekning enn veglenke-posisjonen i blantdisse. 
+    NB! Skiller ikke mellom hel eller delvis overlapp, og lager ikke ny 
+    segmentering. Dvs vi tar ikke hensyn til om finndette-segmentet har større 
+    utstrekning enn treffene i blantdisse. 
     
     TODO: 
         - Takle større datamengder (med bedre bruk av indeksering?) 
         - Lag ny segmentering slik at resultatsettet aldri går utover 
-            veglenkeposisjonene i blantdisse
+            veglenkeposisjonene i blantdisse 
 
     
     Args: 
@@ -108,8 +108,9 @@ def finnveglenkeoverlapp( finndette, blantdisse):
     tmp = finndette.iloc[ treffidx, :]
     data = tmp.reset_index()
     return data
-    
 
+  
+"""Eksempler: 
 import overlappfunksjoner
 import nvdbapi
 tent = nvdbapi.nvdbFagdata(826)
@@ -124,3 +125,4 @@ gpd_ektefelt = overlappfunksjoner.finnveglenkeoverlapp(gpd_felt, gpd_tent)
 #  gpd_ektefelt.crs = {'init': 'epsg:25833'}
 with open( 'feltstrekning.geojson', 'w') as f: 
     f.write( gpd_ektefelt.to_json())
+"""
