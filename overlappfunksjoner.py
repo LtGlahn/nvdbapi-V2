@@ -13,6 +13,11 @@ Utviklet i python 3, spent på om det blir bakoverkompatibelt med nyere python 2
 
 import nvdb2geojson
 import geopandas as gpd
+from copy import deepcopy
+from shapely.geometry import *
+from shapely.wkt import loads
+import pdb
+
 
 
 def fagdata2geodataframe( fagdata, **kwargs ): 
@@ -64,7 +69,147 @@ def vegnett2geodataframe( vegnett, **kwargs ):
       
     return mygpd
 
-def finnveglenkeoverlapp( finndette, blantdisse): 
+def shapely_cut(line, distance):
+    """Cuts a line in two at a distance from its starting point
+    https://stackoverflow.com/questions/31072945/shapely-cut-a-piece-from-a-linestring-at-two-cutting-points 
+    
+    """
+    
+#    if myline.has_z: 
+#        line = LineString([xy[0:2] for xy in list(myline.coords)]) 
+#    else: 
+#        line = myline
+    
+    if distance <= 0.0 or distance >= line.length:
+        return [LineString(line), LineString(line) ]
+    
+    coords = list(line.coords)
+    for i, p in enumerate(coords):
+        pd = line.project(Point(p))
+        if pd == distance:
+            return [
+            LineString(coords[:i+1]),
+            LineString(coords[i:])]
+        if pd > distance:
+            cp = line.interpolate(distance)
+            if line.has_z: 
+                return [
+                LineString(coords[:i] + [(cp.x, cp.y, cp.z)]),
+                LineString([(cp.x, cp.y, cp.z)] + coords[i:])]
+            else: 
+                return [
+                LineString(coords[:i] + [(cp.x, cp.y)]),
+                LineString([(cp.x, cp.y)] + coords[i:])]
+                        
+            
+
+def segmenterveglenkeoverlapp( finndette, blantdisse, debug=False): 
+    """Finner overlapp og "klipper til" slik at utstrekningen stemmer
+    
+    Beregner også nye vegreferanse-verdier og strekningslengde 
+    
+    
+    """
+    myoutdata = []
+    temp = finndette.to_dict('index')
+    for k in temp: 
+        fd = temp[k]
+        
+        blant = blantdisse[( (blantdisse['veglenkeid'] == fd['veglenkeid']) & 
+                             (blantdisse['fra_posisjon'] < fd['til_posisjon']) & 
+                             (blantdisse['til_posisjon'] > fd['fra_posisjon']) )]
+
+        if debug: 
+            print( len(blant), "mulige matcher for", fd['id'], "-", fd['vegsegment nr'], fd['kortform'] )
+    
+        for idx, row in blant.iterrows(): 
+            
+            if debug: 
+                print( "\t","match", idx, "av", len(blant), "treff for",  fd['id'], "-", fd['vegsegment nr'], fd['kortform'] ) 
+                print( "\t","matcher mot:", row['id'], "-", row['vegsegment nr'], row['kortform'] )
+            
+            
+            presisjon = 8            
+            if ( round( row['fra_posisjon'], presisjon) == 
+                 round( fd['fra_posisjon'], presisjon)) and ( 
+                 round( row['til_posisjon'], presisjon) == 
+                 round( fd['til_posisjon'], presisjon) ): 
+                
+                myoutdata.append( fd)
+                print( "\teksakt match på veglenkeposisjoner", fd['kortform'])
+                
+            else: # Må endre utstrekning på veglenkeposisjon, meterverdi og geometri
+                
+                out = deepcopy( fd)
+                
+                out['fra_posisjon'] = max( [ row['fra_posisjon'], fd['fra_posisjon']])
+                out['til_posisjon'] = min( [ row['til_posisjon'], fd['til_posisjon']])
+                
+                out['fra_meter'] = max( [ row['fra_meter'], fd['fra_meter']])
+                out['til_meter'] = min( [ row['til_meter'], fd['til_meter']])
+                out['strekningslengde'] = out['til_meter'] - out['fra_meter']
+
+               
+                if (  round( row['fra_posisjon'], presisjon) == 
+                      round( out['fra_posisjon'], presisjon) ) and ( 
+                      round( row['til_posisjon'], presisjon) == 
+                      round( out['til_posisjon'], presisjon) ): 
+                    
+                    out['geometry'] = row['geometry']
+                    
+                    if debug: 
+                        print( "\t", "gjenbruker blantdette-objektets geometri" )
+
+                elif (round( fd['fra_posisjon'], presisjon) == 
+                      round( out['fra_posisjon'], presisjon) ) and ( 
+                      round( fd['til_posisjon'], presisjon) == 
+                      round( out['til_posisjon'], presisjon) ): 
+                    
+                    out['geometry'] = fd['geometry']
+                    
+                    if debug: 
+                        print( "\t", "gjenbruker finndette-objektets geometri" )
+
+                        
+                else: 
+                    
+                    # Regner om veglenkeposisjoner til 0-1 intervallet relativt 
+                    # på eksisterende geometri
+                    plengde = fd['til_posisjon'] - fd['fra_posisjon']
+                    posfra = ( out['fra_posisjon'] - fd['fra_posisjon']) / plengde
+                    postil = ( out['til_posisjon'] - fd['fra_posisjon'] ) / plengde
+                    
+                    # Regner om relativ posisjon til avstand i meter
+                    fysposfra = posfra * fd['geometry'].length 
+                    fyspostil = postil * fd['geometry'].length
+                    
+                    # Klipper ... 
+                    [geom1, geom2] = shapely_cut( fd['geometry'], fyspostil) 
+                    [geom3, nygeom] = shapely_cut( geom1, fysposfra)
+                    out['geometry'] = nygeom
+                    
+                    if debug:
+                        print( "\tBeregner ny geometri" )
+                        print("\t", fd['strekningslengde'] - out['strekningslengde'], "strekningslengde-meter kortere") 
+                        print("\t", fd['geometry'].length - out['geometry'].length, "fysiske meter kortere") 
+                        print( "\tfd-objekt", fd['fra_posisjon'], fd['til_posisjon'], fd['geometry'].length)
+                        print( "\tbd-objekt", row['fra_posisjon'], row['til_posisjon'], row['geometry'].length)
+                        print( "\tResultat:", out['fra_posisjon'], out['til_posisjon'])
+                        print( "\tberegnet:", posfra, "til", postil, "skalering", plengde) 
+                        print( "\tfysisk:", fysposfra, fyspostil)
+    
+#                    if debug and out['id'] == 261149290: 
+#                        pdb.set_trace()
+                
+                myoutdata.append(out)
+                
+    if len( myoutdata ) > 0:
+        # myfg = pf.DataFrame
+        return gpd.GeoDataFrame.from_dict( myoutdata)
+    else: 
+        return finndette[ finndette['hp'] == -3]
+    
+def finnveglenkeoverlapp( finndette, blantdisse, returnerindex=False): 
     """Finner overlapp mellom 2 geodataframes med NVDB-objekter eller veglenker
 
     NB! Skalerer dårlig, bruk kun på små datamengder! 
@@ -86,7 +231,10 @@ def finnveglenkeoverlapp( finndette, blantdisse):
             eller fagdata2geodataframe. Alternativt vilkårlig (geo)dataframe
             med kolonnene veglenkeid (heltall), fra_posisjon, til_posisjon
 
-    Keywords: None
+    Keywords: 
+        returnerindex : Bool (False) Returnerer index til treffene i stedet
+            for data
+                    
         
             
     Returns: 
@@ -104,10 +252,11 @@ def finnveglenkeoverlapp( finndette, blantdisse):
                 (p1.til_posisjon > row['fra_posisjon'])  )] ) > 0: 
     
             treffidx.append(idx)
-            
-    tmp = finndette.iloc[ treffidx, :]
-    data = tmp.reset_index()
-    return data
+    
+    if returnerindex: 
+        return treffidx
+    else: 
+        return finndette[ finndette.index.isin(  treffidx) ].copy()
 
   
 """Eksempler: 

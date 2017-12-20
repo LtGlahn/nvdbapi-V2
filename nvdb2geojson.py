@@ -285,6 +285,14 @@ def fagdata2geojson( fagdata, maxcount=False,
             fag = fagdata.nesteForekomst()
 
     elif isinstance( fagdata, dict) and 'egenskaper' in fagdata.keys():
+        
+        mittobj = nvdbapi.nvdbFagdata(fagdata['metadata']['type']['id'])
+        if strictGeometryType: 
+            geometrityper = mittobj.objektTypeDef['stedfesting'] 
+        else: 
+            geometrityper = ''
+        
+        
         mygeojson = __addfag2geojson( fagdata, mygeojson, 
             vegsegmenter=vegsegmenter, ignoreregenskaper=ignoreregenskaper, 
             ignorervegref=ignorervegref, geometrityper=geometrityper)
