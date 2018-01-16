@@ -274,9 +274,13 @@ def fagdata2geojson( fagdata, maxcount=False,
         stopp = False
         while fag and not stopp:
             
-            mygeojson = __addfag2geojson( fag, mygeojson, 
-                vegsegmenter=vegsegmenter, ignoreregenskaper=ignoreregenskaper, 
-                ignorervegref=ignorervegref, geometrityper=geometrityper)        
+            # Sjekker om vi har tomme data (typisk fagdata på historisk vegnett)
+            if len( fag['vegsegmenter'] ) > 0: 
+                mygeojson = __addfag2geojson( fag, mygeojson, 
+                    vegsegmenter=vegsegmenter, ignoreregenskaper=ignoreregenskaper, 
+                    ignorervegref=ignorervegref, geometrityper=geometrityper)
+            else: 
+                print( 'Ignorerer tomt objekt ' + fag['href'])
             
             count += 1
             if maxcount and count >= maxcount: 
