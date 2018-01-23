@@ -146,7 +146,7 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
     # Egenskapsverdier
     egenskaper = {}
     
-    if not ignoreregenskaper: 
+    if not ignoreregenskaper and 'egenskaper' in fag.keys(): 
         for k in fag['egenskaper']:
             egenskaper[k['navn']] = k['verdi']
 
