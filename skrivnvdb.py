@@ -170,7 +170,6 @@ class apiskrivforbindelse():
 class endringssett(): 
     
     def __init__(self, data ):
-        self.datatype = datatype
         self.data = data
         self.status = 'ikke registrert' 
         
