@@ -60,6 +60,10 @@ class nvdbVegnett:
                                 'initielt'      : True # Initiell ladning av datasett
                     } 
         
+        # Standardverdier for responsen, og holder evt tilleggsparametre
+        # Initielt tom for vegnett, men langt fagdata
+        self.respons  = { }
+        
         self.data = { 'objekter' : []}
         self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
         
@@ -223,6 +227,24 @@ class nvdbVegnett:
                 warn('Wrong input to addfilter_geo. Should be dict') 
         else:
             return self.geofilter
+
+    def add_request_arguments( self, parameters): 
+        """Appends (or updates) key-value parameters to the data retrieval request
+        Input argument is a dict. 
+        This modifies the .response 
+        
+        Example
+        p = nvdbFagdata(45)
+        p.add_request_arguments( { 'srid' : 4326 })
+        # Coordinates are now in lat/lon, not epsg:25833 / 32633
+        """
+        if parameters and isinstance( parameters, dict): 
+            for k in parameters.keys(): 
+                self.respons[k] = parameters[k]
+                
+        else: 
+            warn("Input argument to add_request_arguments should be dict")
+    
 
     def anrope(self, path, parametre=None, debug=False, silent=False): 
     

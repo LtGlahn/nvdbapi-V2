@@ -302,6 +302,17 @@ def fagdata2geojson( fagdata, maxcount=False,
             ignorervegref=ignorervegref, geometrityper=geometrityper)
     else: 
         warn( "Sorry, gjenkjente ikke dette som NVDB fagdata" )
+    
+    # Sjekker srid
+    if hasattr(fagdata, 'respons' ) and 'srid' in fagdata.respons.keys(): 
+        
+        if fagdata.respons['srid'] == 4326: 
+            mygeojson.pop( 'crs')
+        elif fagdata.respons['srid'] not in [32633, 25833]: 
+            warn( 'srid: ' + str(fagdata.respons['srid']) + ' not recognised. Adjust CRS of geojson manually' )
+            
+    
+    
     return mygeojson
 
 def geojsontemplate():
