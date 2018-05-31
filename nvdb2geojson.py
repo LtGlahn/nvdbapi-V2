@@ -13,8 +13,6 @@ import copy
 import shapely.wkt
 from warnings import warn
 
-
-
 # How to install shapely on windows: 
 # http://deparkes.co.uk/2015/01/29/install-shapely-on-anaconda/ 
 # This also works for other python distributions than anaconda! 
@@ -165,6 +163,26 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
             
             geom = shapely.wkt.loads( seg['geometri']['wkt'])
             
+            if seg['geometri']['srid'] == 4326: 
+                tempx = geom.x
+                tempy = geom.y
+                if geom.has_z: 
+                    tempz = geom.z
+                
+                if geom.type == 'Point': 
+                    if geom.has_z: 
+                        geom = shapely.geometry.Point( tempy, tempx, tempz )
+                    else: 
+                        geom = shapely.geometry.Point( tempy, tempx)
+                elif geom.type == 'LineString': 
+                    if geom.has_z: 
+                        geom = shapely.geometry.LineString( tempy, tempx, tempz )
+                    else:
+                        geom = shapely.geometry.LineString( tempy, tempx )
+                else: 
+                    warn( 'Geometry swap (x,y)->(y,x) required for srid=4326, not impemented for type' + geom.type )
+                    
+            
             seg.pop('geometri')
             vref = seg.pop( 'vegreferanse')
             stedfesting = seg.pop( 'stedfesting')
@@ -263,7 +281,7 @@ def fagdata2geojson( fagdata, maxcount=False,
     mygeojson = geojsontemplate()
     
     if isinstance( fagdata, nvdbapi.nvdbFagdata): 
-        
+                
         if strictGeometryType: 
             geometrityper = fagdata.objektTypeDef['stedfesting'] 
         else: 
@@ -303,15 +321,8 @@ def fagdata2geojson( fagdata, maxcount=False,
     else: 
         warn( "Sorry, gjenkjente ikke dette som NVDB fagdata" )
     
-    # Sjekker srid
-    if hasattr(fagdata, 'respons' ) and 'srid' in fagdata.respons.keys(): 
-        
-        if fagdata.respons['srid'] == 4326: 
-            mygeojson.pop( 'crs')
-        elif fagdata.respons['srid'] not in [32633, 25833]: 
-            warn( 'srid: ' + str(fagdata.respons['srid']) + ' not recognised. Adjust CRS of geojson manually' )
-            
-    
+    if 'srid' in fagdata.respons and fagdata.respons['srid'] == 4326: 
+        mygeojson.pop('crs')
     
     return mygeojson
 
