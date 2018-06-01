@@ -164,21 +164,30 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
             geom = shapely.wkt.loads( seg['geometri']['wkt'])
             
             if seg['geometri']['srid'] == 4326: 
-                tempx = geom.x
-                tempy = geom.y
-                if geom.has_z: 
-                    tempz = geom.z
                 
                 if geom.type == 'Point': 
+                    tempx = geom.x
+                    tempy = geom.y
                     if geom.has_z: 
+                        tempz = geom.z
                         geom = shapely.geometry.Point( tempy, tempx, tempz )
                     else: 
                         geom = shapely.geometry.Point( tempy, tempx)
+
                 elif geom.type == 'LineString': 
-                    if geom.has_z: 
-                        geom = shapely.geometry.LineString( tempy, tempx, tempz )
-                    else:
-                        geom = shapely.geometry.LineString( tempy, tempx )
+                    
+                    if not geom.has_z: 
+                        print( "2d koord", fag['id'])
+
+                    tmpcoords = list( geom.coords)
+                    newcoords = []
+                    for point in tmpcoords: 
+                        
+                        if geom.has_z: 
+                            newcoords.append( (point[1], point[0], point[2] )  )
+                        else:
+                            newcoords.append( (point[1], point[0] )  )
+                    geom = shapely.geometry.LineString( newcoords )
                 else: 
                     warn( 'Geometry swap (x,y)->(y,x) required for srid=4326, not impemented for type' + geom.type )
                     
@@ -197,6 +206,7 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
             if __geometritypefilter( geom, geometritype=geometrityper): 
                 mygeojson['features'].append( geojson.Feature(geometry=geom, 
                                                               properties=eg))
+                
             else: 
                 print( str(fag['id']), 'Ignorerte geometritype', geom.type, 
                           'vil ha', str( geometrityper))
@@ -298,7 +308,8 @@ def fagdata2geojson( fagdata, maxcount=False,
                     vegsegmenter=vegsegmenter, ignoreregenskaper=ignoreregenskaper, 
                     ignorervegref=ignorervegref, geometrityper=geometrityper)
             else: 
-                print( 'Ignorerer tomt objekt ' + fag['href'])
+                pass
+                # print( 'Ignorerer tomt objekt ' + fag['href'])
             
             count += 1
             if maxcount and count >= maxcount: 
