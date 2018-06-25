@@ -155,6 +155,8 @@ class apiskrivforbindelse():
             return None
         
     def les( self, path, **kwargs): 
+        """Http GET requests til NVDB REST skriveapi
+        """
         
         if path[0:4] == 'http': 
             url = path
@@ -168,6 +170,31 @@ class apiskrivforbindelse():
                                        headers=self.headers, 
                                        **kwargs)
         
+
+    def checklock( self, endringsettID ): 
+        """Python request kall for å sjekke låser for endringssett 
+        
+        Returnerer python requests objekt. 
+        """
+        url = self.apiurl + '/nvdb/apiskriv/kontrollpanel/data/locks'
+        params  ={ 'blocking' : endringsettID }
+        
+        r = self.les( url, params=params )
+        return r 
+        
+    def checklock_prettyprint( self, endringsettID, printheader=False):
+        """Pen utskrift av låser som evt blokkerer endringssettet
+        """
+        r = self.checklock( endringsettID)
+        locks = r.json()
+        if len(locks) > 0: 
+            if printheader:
+                print( "lockId endringssettID username commonName origin time")
+            for lock in locks: 
+                print( lock['lockId'], endringsettID, lock['username'], lock['commonName'], 
+                      lock['origin'], lock['time'] )
+        else: 
+            print( "No locks for", endringsettID)
 
 class endringssett(): 
     
