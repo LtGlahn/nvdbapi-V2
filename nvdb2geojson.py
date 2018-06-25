@@ -13,8 +13,6 @@ import copy
 import shapely.wkt
 from warnings import warn
 
-
-
 # How to install shapely on windows: 
 # http://deparkes.co.uk/2015/01/29/install-shapely-on-anaconda/ 
 # This also works for other python distributions than anaconda! 
@@ -165,6 +163,35 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
             
             geom = shapely.wkt.loads( seg['geometri']['wkt'])
             
+            if seg['geometri']['srid'] == 4326: 
+                
+                if geom.type == 'Point': 
+                    tempx = geom.x
+                    tempy = geom.y
+                    if geom.has_z: 
+                        tempz = geom.z
+                        geom = shapely.geometry.Point( tempy, tempx, tempz )
+                    else: 
+                        geom = shapely.geometry.Point( tempy, tempx)
+
+                elif geom.type == 'LineString': 
+                    
+                    if not geom.has_z: 
+                        print( "2d koord", fag['id'])
+
+                    tmpcoords = list( geom.coords)
+                    newcoords = []
+                    for point in tmpcoords: 
+                        
+                        if geom.has_z: 
+                            newcoords.append( (point[1], point[0], point[2] )  )
+                        else:
+                            newcoords.append( (point[1], point[0] )  )
+                    geom = shapely.geometry.LineString( newcoords )
+                else: 
+                    warn( 'Geometry swap (x,y)->(y,x) required for srid=4326, not impemented for type' + geom.type )
+                    
+            
             seg.pop('geometri')
             vref = seg.pop( 'vegreferanse')
             stedfesting = seg.pop( 'stedfesting')
@@ -179,6 +206,7 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
             if __geometritypefilter( geom, geometritype=geometrityper): 
                 mygeojson['features'].append( geojson.Feature(geometry=geom, 
                                                               properties=eg))
+                
             else: 
                 print( str(fag['id']), 'Ignorerte geometritype', geom.type, 
                           'vil ha', str( geometrityper))
@@ -263,7 +291,7 @@ def fagdata2geojson( fagdata, maxcount=False,
     mygeojson = geojsontemplate()
     
     if isinstance( fagdata, nvdbapi.nvdbFagdata): 
-        
+                
         if strictGeometryType: 
             geometrityper = fagdata.objektTypeDef['stedfesting'] 
         else: 
@@ -280,7 +308,8 @@ def fagdata2geojson( fagdata, maxcount=False,
                     vegsegmenter=vegsegmenter, ignoreregenskaper=ignoreregenskaper, 
                     ignorervegref=ignorervegref, geometrityper=geometrityper)
             else: 
-                print( 'Ignorerer tomt objekt ' + fag['href'])
+                pass
+                # print( 'Ignorerer tomt objekt ' + fag['href'])
             
             count += 1
             if maxcount and count >= maxcount: 
@@ -302,6 +331,10 @@ def fagdata2geojson( fagdata, maxcount=False,
             ignorervegref=ignorervegref, geometrityper=geometrityper)
     else: 
         warn( "Sorry, gjenkjente ikke dette som NVDB fagdata" )
+    
+    if 'srid' in fagdata.respons and fagdata.respons['srid'] == 4326: 
+        mygeojson.pop('crs')
+    
     return mygeojson
 
 def geojsontemplate():

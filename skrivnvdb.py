@@ -171,8 +171,7 @@ class apiskrivforbindelse():
 
 class endringssett(): 
     
-    def __init__(self, data, datatype='xml'):
-        self.datatype = datatype
+    def __init__(self, data ):
         self.data = data
         self.status = 'ikke registrert' 
         
