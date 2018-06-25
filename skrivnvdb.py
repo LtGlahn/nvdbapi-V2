@@ -54,7 +54,8 @@ class apiskrivforbindelse():
         self.proxies = {} 
         self.tokenId = ''
                               
-    def login(self, miljo='nvdbdocker', proxies=False, username='jajens'): 
+    def login(self, miljo='nvdbdocker', proxies=False, username='jajens', 
+              pw=None): 
         
         if miljo == 'nvdbdocker': 
             
@@ -92,7 +93,7 @@ class apiskrivforbindelse():
             else:
                 print( 'Miljø finnes ikke! utv, test eller prod - eller nvdbdocker')
 
-            headers = self.SVVpassord( username=username )
+            headers = self.SVVpassord( username=username, pw=pw )
             
             self.requestsession = requests.session()
             self.loginrespons = self.requestsession.post( url=openAMurl, 
@@ -119,14 +120,15 @@ class apiskrivforbindelse():
         else: 
             self.debug = self.requestsession.get( self.apiurl + '/logout')
         
-    def SVVpassord( self, username=None): 
+    def SVVpassord( self, username=None, pw=None): 
         
         if not username: 
             username = input( 'Username: ' )
-            
+        if not pw: 
+            pw = getpass.getpass( username+"'s Password: ")
         headers = copy.deepcopy( self.headers )
         headers['X-OpenAM-Username'] = username
-        headers['X-OpenAM-Password'] = getpass.getpass( username+"'s Password: ")
+        headers['X-OpenAM-Password'] = pw
         
         return headers
         
@@ -211,23 +213,39 @@ class endringssett():
                     print( ff['feil'], ff['nvdbId'])
     
                     
-    def finnskrivefeil(self): 
+    def finnskrivefeil(self, returnNvdbId=False): 
         b = self.sjekkstatus(returjson=True)
+        nvdbid_feiler = []
         endringer = {}
-        if 'delvisOppdater' in self.data.keys():
-            endringer = dict(( p['nvdbId'], p) for p in self.data['delvisOppdater']['vegObjekter'])
+        # datakeys = set( self.data.keys())
+        # if 'delvisOppdater' in self.data.keys():
+        harnvdbid =  { 'oppdater', 'delvisOppdater', 
+                                   'korriger', 'delvisKorriger', 'slett' }
+        bb = harnvdbid.intersection( set( self.data.keys()))
+        if bb: 
+            bb_str = bb.pop() # Henter tekst fra set - mengden. Skal kun være 1 - en 
+            endringer = dict(( p['nvdbId'], p) for p in self.data[bb_str]['vegObjekter'])
+        elif  'registrer' in self.data.keys(): 
+            endringer = dict(( p['tempId'], p) for p in self.data['registrer']['vegObjekter'])
+        else: 
+            print( 'Funky... dette skulle IKKE skje, her er mine dict-oppslagsnøkler', 
+                  self.data.keys())            
+
 
         print( "fremdrift:", b['fremdrift'])
         for ff in b['resultat']['vegObjekter']: 
             if ff['feil']: 
+                nvdbid_feiler.append( ff['nvdbid'])
                 print(' --- FEIL -- ' )
                 print(ff['nvdbId'], ff['feil'] )
                 print( 'endringssett:' )
                 if endringer and str(ff['nvdbId']) in endringer.keys(): 
                     print( json.dumps(endringer[str(ff['nvdbId'])], indent=4) )
                 else: 
-                    print( "Fant ingen endringssett med NVDB", ff['nvdbId'], '????')
+                    print( "Fant ingen endringssett med NVDB id", ff['nvdbId'], '????')
                  
+        if returnNvdbId: 
+            return nvdbid_feiler
         
     def registrer(self): 
         """Registrerer et endringssett. Forutsetter innlogget tilkobling
@@ -292,14 +310,14 @@ class endringssett():
         else: 
             
             if self.status == 'registrert': 
-                print( "Endringssett er registrert hos NVDB api, sjekker status der:")
+                print( "Endringssett er registrert hos NVDB api, skriveprosess er ikke startet")
             elif self.status == 'startet': 
-                print( "Skriveprosess startet i NVDB api, sjekker status der:")
+                print( "Skriveprosess startet i NVDB api, bruk funksjon sjekkfremdrift")
                 
             b = self.forbindelse.les( self.statuslenke)
             self.statusrespons = b 
-            if b.text == '"UTFØRT"': 
-                self.status = 'UTFØRT' 
+            if b.text in [ '"UTFØRT"', '"AVVIST"'] : 
+                self.status = b.text.replace('"', '') # Fjerner dobbelfnutter... 
             if returjson: 
                 return( b.json())
             else: 
@@ -307,21 +325,32 @@ class endringssett():
                 print( b.text)
 
             
-    def sjekkfremdrift(self ): 
-        """Sjekker fremdrift på skriveprosess NVDB api"""
+    def sjekkfremdrift(self , returdata=False): 
+        """Sjekker fremdrift på skriveprosess NVDB api
+        Nøkkelord returdata=True (default: False) returnerer teksten 
+        vi får fra NVDB api, til bruk i dine funksjoner, f.eks for å itere over
+        mange endringssett (lurt å dele opp i mindre biter, pga låsekonflikt etc)
+        Sjekk for verdien BEHANDLES i din applikasjon - det betyr at 
+        skriveprosess ikke er ferdig behandlet. """
         if self.status == 'ikke registrert':
-            print( "Endringssettet er IKKE registrert hos NVDB api")
+            returdata = "Endringssettet er IKKE registrert hos NVDB api"
+            print( returdata )
         elif self.status == 'registrert':
-            print( "Endringssettet registrert hos NVDB api, men skriveprosess er ikke startet")
-            print( "Bruk funksjon startskriving for å starte skriveprosess" )
+            returdata = "Endringssettet registrert hos NVDB api, men" + \
+                    " skriveprosess er ikke startet\n" +\
+                    "Bruk funksjon startskriving for å starte skriveprosess" 
+            print(returdata)
         else: 
             
             self.fremdriftrespons = self.forbindelse.les( self.fremdriftlenke)
             print( 'Http status:', self.fremdriftrespons.status_code)
-            print( self.fremdriftrespons.text )
+            returdata = self.fremdriftrespons.text 
+            print( returdata )
             
-            self.status = self.fremdriftrespons.text
+            self.status = returdata
         
+        if returdata: 
+            return returdata
 
     
 
