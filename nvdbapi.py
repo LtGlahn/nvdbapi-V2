@@ -648,7 +648,7 @@ class nvdbFagObjekt():
         get the data value (and not all metadata, with ID's and definitions)
         """ 
         egenskap = self.egenskap( id_or_navn, empty=empty)
-        if egenskap: 
+        if egenskap and egenskap != empty: 
             return egenskap['verdi']
         else: 
             return egenskap
