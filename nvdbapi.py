@@ -315,7 +315,7 @@ class nvdbVegnett:
                     '"X-Kontaktperson" : "ola.nordmann@eposten.din" }\n' ))
             warn( mytext ) 
 
-    def miljo(self, *args):
+    def miljo(self, *args, silent=False):
         """Kun internt på vegvesen-nettet!
         Kan endre hvilket miljø vi går mot.
         Parametre: 
@@ -343,7 +343,8 @@ class nvdbVegnett:
                 print( "Forstod ikke parameter:", args[0])
                 print("Lovlige valg: utv, test eller prod")
         
-        print( "Bruker ", self.apiurl)
+        if not silent: 
+            print( "Bruker ", self.apiurl)
      
             
 class nvdbFagdata(nvdbVegnett): 
@@ -746,17 +747,23 @@ class nvdbFagObjekt():
             raise ValueError('Function relasjon: Keyword argument relasjon must be int or string' )
             
             
-def finnid(objektid, kunvegnett=False, kunfagdata=False): 
+def finnid(objektid, kunvegnett=False, kunfagdata=False, miljo=False): 
     """Henter NVDB objekt (enten veglenke eller fagdata) ut fra objektID.
     Bruk nøkkelord kunvegnett=True eller kunfagdata=True for å avgrense til 
     vegnett og/eller fagdata (vi har betydelig overlapp på ID'er mellom vegnett 
     og fagdata)
     
     Fagdata returnerer en DICT
-    Vegnett returnerer en LISTE med alle vegnettselementene for veglenka"""
+    Vegnett returnerer en LISTE med alle vegnettselementene for veglenka
+    
+    Nøkkelord miljo='utv', 'test' eller 'prod' (default) spesifiserer hvilket
+    miljø som skal brukes.
+    """
     
     # Dummy objekt for å gjenbruke anrops-funksjonene
     b = nvdbFagdata(45)
+    if miljo:
+        b.miljo( miljo, silent=True)
     res = None
 
     # Henter fagdata    
