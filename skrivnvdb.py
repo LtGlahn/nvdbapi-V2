@@ -198,7 +198,8 @@ class apiskrivforbindelse():
 
 class endringssett(): 
     
-    def __init__(self, data ):
+    def __init__(self, data=None):
+
         self.data = data
         self.status = 'ikke registrert' 
         
@@ -211,11 +212,21 @@ class endringssett():
         self.fremdriftlenke = False 
         self.validertresultat = False
     
-    def tilkobling( self, apiskriv): 
-        """Den forbindelsen man skal bruke i kommunikasjon med NVDB api 
-        apiskriv = en instans av apiskrivforbindelse 
-        hvor man er aktivt logget inn i skriveapi
+    def lag_forbindelse( self, apiskriv=None): 
         """
+        Oppretter en forbindelse til apiskriv. Du kan (gjen)bruke en 
+        eksisterende forbindelse eller opprette en ny
+        
+        Forbindelsen er en instans av apiskrivforbindelse-objektet, som 
+        håndterer en brukersesjon mot skriveAPI. 
+        
+        arguments: 
+            apiskrivforbindelse [valgfri] En instans av apiskrivforbindelse
+         
+        """
+        if not apiskriv: 
+            apiskriv = apiskrivforbindelse()
+        
         self.forbindelse = apiskriv
     
     def valider(self): 
