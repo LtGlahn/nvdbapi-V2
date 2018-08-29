@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Kommunikasjon mot, og skriving til NVDB skriveapi
+Kommunikasjon mot, og skriving til NVDB skriveapi https://apiskriv.vegdata.no/ 
 
 Det anbefales STERKT at utvikling foregår mot docker-instans av skriveapi. 
 https://www.vegdata.no/2016/03/09/utviklerutgave-av-skrive-apiet-tilgjengelig-pa-docker-hub/
@@ -16,22 +16,29 @@ endringssett - Klasse som håndterer alle steg i skriveprosessen:
  - sjekkfremdrift 
  
 Selve endringssettet - de data som skal skrives / endres / slettes / korrigeres / oppdateres - 
-er en python-dict i endringssett.data  - attributten. 
+er en python-dict i endringssett.data  - attributten. Du kan legge data dit 
+automatisk ved å sende dem inn som argument når du oppretter endringssett-objektet
+
+Eksempel
+    e1 = endringssett( <dine skriveklare data>)
 
 Eksempler på endringssett finner du i /generator/ - endepunktet i docker-instans, 
 evt https://www.vegvesen.no/nvdb/apiskriv/generator/
 
-Endringssettet må ha en api-forbindelse. Denne instansieres med et kall til funksjonen 
-tilkobling, med en instans av apiskrivforbindelse som argument. 
+Endringssettet må ha en api-forbindelse. Dette er en instans av 
+apiskrivforbindelse-objektet i attributten endringsset.forbindelse. 
+Via funksjonen endringssett.lag_forbindelse( apiskrivforbindelse ) 
+kan du (gjen)bruke en eksisterende forbindelse, eller opprette en ny. 
 
 Eksempel: 
-	endringssett.tilkobling(  apiskskriv )
+	endringssett.lag_forbindelse(  apiskskrivapiskrivforbindelse )
+
+Alternativt
+    endringssett()
+    endringsett.lag_forbindelse() # Lager ny forbindelse til apiskriv
+    endringssett.forbindelse.login( username=<du>, pw=<dittpassord>)
 
 
-Selve tilbobklingen lagres i attributten endringssett.forbindelse, og kan nås der. 
-
-Eksempel: 
-	endringssett.forbindelse.login( )
 	
 """
 import requests
