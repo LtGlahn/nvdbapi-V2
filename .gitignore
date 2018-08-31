@@ -96,3 +96,12 @@ ENV/
 
 # Credentials
 credentials.py
+
+# Personal folder structure
+#
+nyttig/
+skrot/
+datadumps/
+figures/
+_map.html
+*.ipynb
