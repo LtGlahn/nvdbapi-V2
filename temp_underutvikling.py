@@ -68,12 +68,15 @@ def finnellipsoidehoyder( objtype, egengeomtype=['Egengeometri, Punkt',
     
     """ 
     
-    data = nvdbapi.nvdbFagdata(objtype)
+    data = nvdbapi.nvdbFagdata(objtype, miljo='prod')
     if egenskapfilter:
         data.addfilter_egenskap(egenskapfilter)
         
     if geofilter:
         data.addfilter_geo( geofilter)
+    
+    if miljo != 'prod': 
+        data.miljo( miljo)
     
     resultat = []    
     mittobj = data.nesteForekomst()
