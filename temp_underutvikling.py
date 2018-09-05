@@ -12,7 +12,8 @@ gjerne bli plassert andre steder, under andre navn.
 """
 
 import nvdbapi 
-import shapely
+import shapely.geometry
+import shapely.wkt
 import numpy as np
 import pdb
 # from proj_wrapper import Proj, coord, PJ
@@ -41,9 +42,10 @@ def regnutnyhoyde( mytuple, dato):
     return( (mytuple[0], mytuple[1], mytuple[2]-diff ) )
 
 
-def finnellipsoidehoyder( objtype, egengeomtype=['Egengeometri, Punkt', 
-                                                  'Egengeometri, Linje' ], 
-                                    egenskapfilter=None, geofilter=None): 
+def finnellipsoidehoyder( objtype, egengeomtype=['Geometri, Punkt', 
+                                                  'Geometri, Linje' ], 
+                                    egenskapfilter=None, geofilter=None, 
+                                    miljo='prod'): 
     """Første steg i korreksjon ellipsoide=>ortometriske høyder
     
     Leter etter objekter der egengeometri er registrert med 
@@ -58,9 +60,11 @@ def finnellipsoidehoyder( objtype, egengeomtype=['Egengeometri, Punkt',
                 
     Keywords
         egengeomtype (list of int or text): Liste med hvilke(n) egenskapstype 
-                med egengeometrier som skal korrigeres. 
-        egenskapfilter (dict): Egenskapsfilter, se nvdbapi.nvdbFagdata
-        geofilter (dict): Områdefilter (geofilter), se nvdbapi.nvdbFagdata
+                                med egengeometrier som skal korrigeres. 
+        egenskapfilter (dict) : Egenskapsfilter, se nvdbapi.nvdbFagdata
+        geofilter (dict)      : Områdefilter (geofilter), se nvdbapi.nvdbFagdata
+        miljo (text)          : Angir om vi skal hente data fra NVDB produksjon 
+                               (default) eller et annet miljø (utv, test)
         
     Returns
         Liste med de NVDB-data som skal endres
@@ -68,7 +72,7 @@ def finnellipsoidehoyder( objtype, egengeomtype=['Egengeometri, Punkt',
     
     """ 
     
-    data = nvdbapi.nvdbFagdata(objtype, miljo='prod')
+    data = nvdbapi.nvdbFagdata(objtype)
     if egenskapfilter:
         data.addfilter_egenskap(egenskapfilter)
         
@@ -79,11 +83,14 @@ def finnellipsoidehoyder( objtype, egengeomtype=['Egengeometri, Punkt',
         data.miljo( miljo)
     
     resultat = []    
+    
     mittobj = data.nesteForekomst()
     
     endringsett_vegobjekter = []
-    
+
+    count = 0    
     while mittobj: 
+        count += 1
         
         if sjekkellipsoidehoyde(mittobj, egengeomtype): 
 
@@ -92,9 +99,21 @@ def finnellipsoidehoyder( objtype, egengeomtype=['Egengeometri, Punkt',
                 endringsett_vegobjekter.append( endringsett_element )
             
             resultat.append(mittobj)
-        
+            
+            # Itererer over datterobjekter
+            if 'barn' in mittobj['relasjoner'].keys(): 
+                for barn in mittobj['relasjoner']['barn']: 
+                    for vegobj in barn['vegobjekter']:  
+                        parametre = { 'inkluder' : 'alle' }
+                        r = data.anrope( 'vegobjekter/' + 
+                                str(barn['type']['id']) + '/' + str(vegobj), 
+                                parametre=parametre) 
+                        if r and sjekkellipsoidehoyde(r, egengeomtype): 
+                            resultat.append( r)
+            
         mittobj = data.nesteForekomst()
     
+    print( f'sjekket {count} obj av type {objtype}, korrigerer {len(resultat)}')
     return resultat
 
 def fiksliste_ellipsoidehoyde( mylist, egengeomtype=['Geometri, Punkt', 
@@ -180,7 +199,6 @@ def fiksellipsoidehoyde( vegobjekt, egengeomtype=['Geometri, Punkt',
                 nyegenskap = formulergeometri( nvdbFagObj.egenskap(egtype), nyshape.wkt )
                 if nyegenskap: 
                     endring_egenskaper.append( nyegenskap)
-
 
     if endring_egenskaper: # Noe verdt å skrive? Lag endringsett-nvdbobjekt
         endring = {     'nvdbId'     : nvdbFagObj.id, 
