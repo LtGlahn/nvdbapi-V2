@@ -16,7 +16,7 @@ import shapely.geometry
 import shapely.wkt
 import numpy as np
 import pdb
-from proj_wrapper import Proj, coord, PJ
+# from proj_wrapper import Proj, coord, PJ
 
 
 def regnutnyhoyde( mytuple, dato):
@@ -37,10 +37,10 @@ def regnutnyhoyde( mytuple, dato):
     datotall = float( s[0]) + float( s[1])/12
     proj_str = "+proj=pipeline +step +proj=utm +zone=33 +ellps=GRS80 +inv +step +proj=vgridshift " + \
     "+grids=/home/jajens/myproj/href/href2008a.gtx +inv +step +proj=utm +zone=33 +ellps=GRS80"
-    p = Proj(proj_str)
-    c1 = coord( mytuple[0], mytuple[1], mytuple[2], datotall)
-    r1 = p.trans(c1)
-    diff = r1.xyz.z - c1.xyz.z 
+#    p = Proj(proj_str)
+#    c1 = coord( mytuple[0], mytuple[1], mytuple[2], datotall)
+#    r1 = p.trans(c1)
+#    diff = r1.xyz.z - c1.xyz.z 
     return( (mytuple[0], mytuple[1], mytuple[2]-diff ) )
 
 
@@ -305,11 +305,13 @@ def sjekkellipsoidehoyde(mittobj, egengeomtype):
         if egen_wkt: 
             egengeom = wkt2numpyarr( egen_wkt )
             
-            dz_median = np.median( egengeom[:,2] ) - np.median( vegnettgeom[:,2])
-            if dz_median > hoydediff : 
-                feilhoyde = True
+            if len( egengeom[0]) == 3: 
             
-            print( "Høydedifferanse", dz_median )
+                dz_median = np.median( egengeom[:,2] ) - np.median( vegnettgeom[:,2])
+                if dz_median > hoydediff : 
+                    feilhoyde = True
+                
+                print( "Høydedifferanse", dz_median )
 
     return feilhoyde
     
