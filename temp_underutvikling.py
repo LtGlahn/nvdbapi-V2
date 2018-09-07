@@ -88,7 +88,9 @@ def finnellipsoidehoyder( objtype, egengeomtype=['Geometri, Punkt',
     
     endringsett_vegobjekter = []
 
-    count = 0    
+    count = 0
+    count_fix = 0
+    count_barn = 0
     while mittobj: 
         count += 1
         
@@ -97,12 +99,37 @@ def finnellipsoidehoyder( objtype, egengeomtype=['Geometri, Punkt',
             endringsett_element = fiksellipsoidehoyde( mittobj)
             if endringsett_element: 
                 endringsett_vegobjekter.append( endringsett_element )
+                count_fix += 1
             
             resultat.append(mittobj)
             
             # Itererer over datterobjekter
             if 'barn' in mittobj['relasjoner'].keys(): 
-                for barn in mittobj['relasjoner']['barn']: 
+                minebarn = sjekkslekta( mittobj['relasjoner'], egengeomtype=egengeomtype, 
+                            nvdbapi_sokeobj=data)
+                if len(minebarn) > 0: 
+                    resultat.extend( minebarn)
+                    count_barn = count_barn + len(minebarn)
+                
+            
+        mittobj = data.nesteForekomst()
+    
+    print( f'sjekket {count} obj av type {objtype}, korrigerer {count_fix} og '
+          f'{count_barn} tilhørende barn, totalt {len(resultat)}')
+    return resultat
+
+def sjekkslekta( slektliste,  egengeomtype=['Geometri, Punkt', 
+                                                  'Geometri, Linje' ], 
+                nvdbapi_sokeobj=None, miljo='prod'):
+    """Sjekker alle (barne)barn i et slektstre rekursivt for høydefeil"""
+    
+    if not nvdbapi_sokeobj: 
+        nvdbapi_sokeobj = nvdbapi.nvdbFagdata(45) # Dummy objekt
+        if miljo != 'prod': 
+            nvdbapi_sokeobj.miljo(miljo, silent=True)
+        
+    resultat = []
+    for barn in slektliste['barn']: 
                     for vegobj in barn['vegobjekter']:  
                         parametre = { 'inkluder' : 'alle' }
                         r = data.anrope( 'vegobjekter/' + 
@@ -110,11 +137,16 @@ def finnellipsoidehoyder( objtype, egengeomtype=['Geometri, Punkt',
                                 parametre=parametre) 
                         if r and sjekkellipsoidehoyde(r, egengeomtype): 
                             resultat.append( r)
-            
-        mittobj = data.nesteForekomst()
     
-    print( f'sjekket {count} obj av type {objtype}, korrigerer {len(resultat)}')
+                        if 'barn' in r['relasjoner'].keys():
+                            barnebarn = sjekkslekta( r['relasoner'], 
+                                                    egengeomtype=egengeomtype,
+                                                    nvdbapi_sokeobj=nvdbapi_sokeobj)
+                            if len(barnebarn) > 0: 
+                                resultat.extend(barnebarn)
+                            
     return resultat
+
 
 def fiksliste_ellipsoidehoyde( mylist, egengeomtype=['Geometri, Punkt', 
                                                   'Geometri, Linje' ]): 
