@@ -16,7 +16,7 @@ import shapely.geometry
 import shapely.wkt
 import numpy as np
 import pdb
-# from proj_wrapper import Proj, coord, PJ
+from proj_wrapper import Proj, coord, PJ
 
 
 def regnutnyhoyde( mytuple, dato):
@@ -35,10 +35,12 @@ def regnutnyhoyde( mytuple, dato):
     
     s = dato.split('-')
     datotall = float( s[0]) + float( s[1])/12
-
-#    c1 = coord( mytuple[0], mytuple[1], mytuple[2], datotall)
-#    r1 = p.trans(c1)
-#    diff = r1.xyz.z - c1.xyz.z 
+    proj_str = "+proj=pipeline +step +proj=utm +zone=33 +ellps=GRS80 +inv +step +proj=vgridshift " + \
+    "+grids=/home/jajens/myproj/href/href2008a.gtx +inv +step +proj=utm +zone=33 +ellps=GRS80"
+    p = Proj(proj_str)
+    c1 = coord( mytuple[0], mytuple[1], mytuple[2], datotall)
+    r1 = p.trans(c1)
+    diff = r1.xyz.z - c1.xyz.z 
     return( (mytuple[0], mytuple[1], mytuple[2]-diff ) )
 
 
@@ -132,14 +134,14 @@ def sjekkslekta( slektliste,  egengeomtype=['Geometri, Punkt',
     for barn in slektliste['barn']: 
                     for vegobj in barn['vegobjekter']:  
                         parametre = { 'inkluder' : 'alle' }
-                        r = data.anrope( 'vegobjekter/' + 
+                        r = nvdbapi_sokeobj.anrope( 'vegobjekter/' + 
                                 str(barn['type']['id']) + '/' + str(vegobj), 
                                 parametre=parametre) 
                         if r and sjekkellipsoidehoyde(r, egengeomtype): 
                             resultat.append( r)
     
                         if 'barn' in r['relasjoner'].keys():
-                            barnebarn = sjekkslekta( r['relasoner'], 
+                            barnebarn = sjekkslekta( r['relasjoner'], 
                                                     egengeomtype=egengeomtype,
                                                     nvdbapi_sokeobj=nvdbapi_sokeobj)
                             if len(barnebarn) > 0: 
