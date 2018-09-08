@@ -139,7 +139,7 @@ def sjekkslekta( slektliste,  egengeomtype=['Geometri, Punkt',
                                     str(barn['type']['id']) + '/' + str(vegobj), 
                                     parametre=parametre) 
                         except ValueError as myerr: 
-                            print( myerr.message) 
+                            print( myerr) 
                         else:     
                             if r and sjekkellipsoidehoyde(r, egengeomtype): 
                                 resultat.append( r)
