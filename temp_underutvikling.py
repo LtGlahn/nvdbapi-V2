@@ -300,8 +300,8 @@ def sjekkellipsoidehoyde(mittobj, egengeomtype):
         if i == 0: 
             vegnettgeom = wkt2numpyarr( vegsegment['geometri']['wkt']) 
         else: 
-            np.concatenate( vegnettgeom, 
-                           wkt2numpyarr( vegsegment['geometri']['wkt']))
+            np.concatenate( [ vegnettgeom, 
+                           wkt2numpyarr( vegsegment['geometri']['wkt'] ) ] )
 
     
     for geomtyp in egengeomtype: 
