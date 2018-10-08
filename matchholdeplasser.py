@@ -8,12 +8,16 @@ Created on Wed Oct  3 14:52:55 2018
 # Builtin libraries
 import json
 import math
+import datetime
+from time import sleep
 
 # Well known 3rd party librariers
 import requests 
 import pandas as pd
 import pyproj
 import numpy as np
+import shapely.wkt as shpwkt
+from xml.parsers.expat import ExpatError
 
 # My libraries
 import nvdbapi
@@ -57,7 +61,18 @@ def points2dir( x0, y0, x1, y1):
 
 def ang2vec( compassdirection, X=0, Y=0):
     """
-    Beregner vektorkomponent (x2, y2) i vektoren (0, 0) => (x2, y2) ut fra kompassretning
+    Regner fra kompassretning til vektor-koordinater 
+    
+    Arguments
+        compassdirection | float Kompassretning i grader
+        
+    Keywords
+        X=0, Y=0 float Koordinater i kartesisk koordinatsystem. 
+        
+    Returns 
+        (x2, y2) float Siste koordinatpar i vektoren (X, Y) => (x2, y2) 
+            hvor vektoren peker i kompassretning og har lengde 1
+                 
     """
     cm = compassdirection * math.pi / 180
     x2 = math.sin( cm) + X
@@ -90,7 +105,7 @@ def isleftrigth( Xside, Yside, Xveg, Yveg, roadDirection, minimumdist=0.5,
     
     (Xd1, Yd1) = ang2vec( roadDirection, X=Xveg, Y=Yveg) 
     
-    vec1 = [Xquay-Xveg,Yquay-Yveg]
+    vec1 = [Xside-Xveg,Yside-Yveg]
     vec2 = [Xd1-Xveg, Yd1-Yveg]
     dist = np.linalg.norm( vec1)
     if dist < minimumdist: 
@@ -125,10 +140,106 @@ def isleftrigth( Xside, Yside, Xveg, Yveg, roadDirection, minimumdist=0.5,
     else: 
         return None
     
+def hentkompassretning( veglenkeid, posisjon, delay=0): 
+    """
+    Rekursiv wrapper rundt bomstasjoner_retninger.kompassetning
+    
+    Vil prøve igjen og igjen rekursinvt inntil vi får kontakt
+    
+    
+    """
+
+    try:         
+            (vegnettretn, metreringsretn) = bom.kompassretning( veglenkeid, posisjon)
+            
+    except requests.exceptions.ConnectionError: 
+        delay += 30
+        print( "Nettverksfeil Visveginfo, prøver igjen etter ..." , delay, "sekunder")
+        sleep(delay)
+        (vegnettretn, metreringsretn) = hentkompassretning( veglenkeid, posisjon, delay=delay)
+        
+    except ExpatError: 
+        vegnettretn = None
+        metreringsretn = None
+
+    return vegnettretn, metreringsretn
+
+
+def wrap_finnveg( lon, lat, delay=0):
+    """
+    Rekursiv wrappper rundt finnveg-funksjon, gir ikke opp ved nettverksfeil
+    
+    Prøver igjen inntil det funker 
+    """
+    try:
+        veg = finnveg( lon, lat) 
+
+    except requests.exceptions.ConnectionError: 
+        delay += 15 
+        print( "Nettverksfeil NVDB api, prøver igjen etter ", delay, "sekunder" )
+        sleep(delay)
+        veg = wrap_finnveg( lon, lat, delay=delay) 
+    
+    return veg    
+    
 if __name__ == "__main__": 
     
     
     filnavn = '../data/rb_norway-aggregated-gtfs-basic/stops.txt'    
-    enturdata = pd.DataFrame.from_csv( filnavn )
+    enturdata = pd.read_csv( filnavn )
     
+    enturdata['veg_avstand'] = np.nan
+    enturdata['vegreferanse'] = ''
+    enturdata['veglenkepos'] = ''
+    enturdata['vegkategori'] = ''
+    enturdata['vegnummer'] = np.nan
+    enturdata['side'] = ''
+    enturdata['metreringsretn'] = np.nan
+    enturdata['vegnettretn'] = np.nan
+
+    # iterer med get_value / set_value ref
+    # https://medium.com/@rtjeannier/pandas-101-cont-9d061cb73bfc
+    count = 0
+    t0 = datetime.datetime.now()
     
+    for i in enturdata.index: 
+        # i = enturdata.index[0]
+    
+        count += 1
+        if count % 1000 == 0 or count == 10 or count == 100: 
+            dt = datetime.datetime.now() - t0
+            
+            print( f'Holdeplass {count} av {len(enturdata)}'\
+                  f' etter {dt.total_seconds()/60:.2f} minutt')
+        
+        if 'NSR:Quay' in enturdata.get_value( i, 'stop_id'): 
+            lon = enturdata.get_value( i, 'stop_lon')
+            lat = enturdata.get_value( i, 'stop_lat')
+            (xstop, ystop) = reprojiser( lon, lat)
+            veg = wrap_finnveg( lon, lat) 
+    
+             
+            if not 'code' in veg[0].keys(): 
+            
+                vegpos = shpwkt.loads( veg[0]['geometri']['wkt'])
+                
+                junk = enturdata.set_value( i, 'veg_avstand', veg[0]['avstand'])
+                junk = enturdata.set_value( i, 'vegreferanse', veg[0]['vegreferanse']['kortform'])
+                junk = enturdata.set_value( i, 'veglenkepos', veg[0]['veglenke']['kortform'])
+                junk = enturdata.set_value( i, 'vegkategori', veg[0]['vegreferanse']['kategori'])
+                junk = enturdata.set_value( i, 'vegnummer', veg[0]['vegreferanse']['nummer'])
+            
+                (vegnettretn, metreringsretn) = hentkompassretning(
+                        veg[0]['veglenke']['id'], veg[0]['veglenke']['posisjon'])
+                    
+                
+                if metreringsretn: 
+                    side = isleftrigth( xstop, ystop, vegpos.x, vegpos.y, metreringsretn )                  
+                 
+                    junk = enturdata.set_value( i, 'side', side)
+                    junk = enturdata.set_value( i, 'metreringsretn', metreringsretn)
+                    junk = enturdata.set_value( i, 'vegnettretn', vegnettretn)
+            
+
+    enturdata.to_csv( 'holdeplasser_medveg.csv', index=False)
+    t1 = datetime.datetime.now()
