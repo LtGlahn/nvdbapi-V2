@@ -100,17 +100,17 @@ class memlayerwrap():
 #        self.objektTypeId = fagdataobj.objektTypeId
         
         
-def qgisdakat(  fagdataobj)
+def qgisdakat(  fagdataobj):
     """Lager attributt-definisjon for QGIS objekter ihht datakatalogen"""
     # Liste med ID'er for egenskapstypene for denne objekttypen  
     egIds = [] 
     # Liste med QGIS datatyper. Matcher listen med egenskapstyper. 
     qgisEg = []
-    dakat = fagdataobj.anrope( '/vegobjekttyper/' + str( fagdataobj.objektTypeId) 
+    dakat = fagdataobj.anrope( 'vegobjekttyper/' + str( fagdataobj.objektTypeId) )
 
     for eg in dakat['egenskapstyper']: 
         egIds.append( eg['id'] ) 
-        qgisEg.append( egenskapstype2qgis( eg) ) 
+        qgisEg.append( egenskaptype2qgis( eg) ) 
     
     
     return egIds, qgisEg
@@ -119,13 +119,13 @@ def egenskaptype2qgis( egenskaptype):
     """
     Omsetter en enkelt NVDB datakatalog egenskapdefinisjon til QGIS lagdefinisjon-streng
     """
-    defstring = egenskaptype['Navn']
+    defstring = egenskaptype['navn']
     if 'Tall' in egenskaptype['datatype_tekst']:
         if 'desimaler' in egenskaptype.keys() and egenskaptype['desimaler'] > 0:  
             defstring += ':double'
         else: 
             defstring += ':int' 
-    elif 'Dato' == egenskaptype['datatype_tekst']
+    elif 'Dato' == egenskaptype['datatype_tekst']:
         defstring += ':date'  
     else: 
         defstring += ':string' 
@@ -163,12 +163,12 @@ def nvdb2kart( sokeobjekt, lagnavn='FintKartlag'):
 
 	""" 
 	
-	if isinstance( sokeobjekt, nvdbFagdata): 
+    if isinstance( sokeobjekt, nvdbFagdata): 
 	
 	
-    punktlag = memlayerwrap( 'Point', 'field=id:integer&field=description:string', lagnavn) 
-    linjelag = memlayerwrap( 'MultiLinestring', 'field=id:integer&field=description:string', lagnavn) 
-    
+        punktlag = memlayerwrap( 'Point', 'field=id:integer&field=description:string', lagnavn) 
+        linjelag = memlayerwrap( 'MultiLinestring', 'field=id:integer&field=description:string', lagnavn) 
+        
     for feat in objekter: 
         if 'POINT' in feat['wktgeom']: 
             punktlag.addFeature(feat)
