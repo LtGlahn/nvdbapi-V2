@@ -62,7 +62,7 @@ class apiskrivforbindelse():
         self.tokenId = ''
                               
     def login(self, miljo='nvdbdocker', proxies=False, username='jajens', 
-              pw=None): 
+              pw=None, klient=None): 
         
         if miljo == 'nvdbdocker': 
             
@@ -114,11 +114,16 @@ class apiskrivforbindelse():
                 if 'tokenId' in temp.keys():
                     
                     self.headers['Cookie'] = openAmNavn + '= ' + temp['tokenId']
-            
+                    
                 else: 
                     print( 'Fikk ikke logget på - ingen tokenId :(' )
+                    
             else: 
                 print( "Fikk ikke logget på :( " )
+        
+        # Setter sporbar http header X-Client 
+        if klient: 
+            self.klientinfo(klient)
         
     def loggut(self): 
         
@@ -138,9 +143,31 @@ class apiskrivforbindelse():
         headers['X-OpenAM-Password'] = pw
         
         return headers
+    
+    def klientinfo( self, klientinfo):
+        """
+        Få bedre sporbarhet / enklere søk i skriveapi-GUI! 
         
+        Via http headeren X-Client kan du angi noe som er unikt for det problemet
+        du jobber med akkurat nå, f.eks. fikse bomstasjon-takster. 
+        
+        
+        Endringssett-objektets egenskap headers['X-Client'] settes lik klientinfo
+        
+        Arguments: 
+            klientinfo TEKST - det du vil hete! 
+            
+        Keywords: NONE
+        
+        Returns: NONE
+            
+        """
+        self.headers['X-Client'] = str( klientinfo )
+    
     def skrivtil( self, path, data): 
-        """Poster data til NVDB api skriv"""
+        """
+        Poster data til NVDB api skriv
+        """
         
         if path[0:4] == 'http': 
             url = path
@@ -325,6 +352,7 @@ class endringssett():
         else: 
             print( 'Endringssett IKKE registrert')
             print( self.registrertrespons.text )
+            self.status = 'Nektet registrering'
             
     def startskriving(self ): 
         """Forutsetter at endringsettet er registrert og at vi har en aktiv 
