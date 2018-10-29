@@ -146,8 +146,14 @@ def egenskaptype2qgis( egenskaptype):
 
 def nvdb2kart( sokeobjekt, lagnavn='FintKartlag'): 
     """
-    Første spede begynnelse på nvdb2qgis
-    
+    Første spede begynnelse på nvdb2qgis. 
+	
+	Vil ta et søkeobjekt fra  nvdbapi-v2 biblioteket (nvdbFagdata eller nvdbVegnett) og hente 
+	tilhørende data fra NVDB-api V2 innenfor QGIS-kartflatens utstrekniing 
+	
+	UMODENT: TODO
+		- B
+	
     Arguments: 
         sokeobjekt: Søkeobjekt fra nvdbapi.nvdbVegnett eller nvdbapi.nvdbFagdata
         objekter:list of dict En liste med dict som ser slik ut: 
@@ -169,6 +175,8 @@ def nvdb2kart( sokeobjekt, lagnavn='FintKartlag'):
         punktlag = memlayerwrap( 'Point', 'field=id:integer&field=description:string', lagnavn) 
         linjelag = memlayerwrap( 'MultiLinestring', 'field=id:integer&field=description:string', lagnavn) 
         
+		# Må nok ha mer 
+		
     for feat in objekter: 
         if 'POINT' in feat['wktgeom']: 
             punktlag.addFeature(feat)
