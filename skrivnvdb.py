@@ -6,8 +6,14 @@ Det anbefales STERKT at utvikling foregår mot docker-instans av skriveapi.
 https://www.vegdata.no/2016/03/09/utviklerutgave-av-skrive-apiet-tilgjengelig-pa-docker-hub/
 
 
-apiskrivforbindelse - Klasse som håndterer alt det praktiske med innlogging mot skriveapi. 
-	Kan også brukes til å lese data fra øvrige endrepunkt (endringssett, låser m.m.)
+apiskrivforbindelse - Klasse som håndterer alt det praktiske med 
+innlogging mot skriveapi. Kan brukes til å lese data fra 
+skriveapi-endrepunkt (skriveoperasjoner, endringssett, låser m.m.)
+
+Merk funksjonen klientinfo('Passe unik tekststreng'). Denne setter headeren 
+X-Client lik tekststrengen. Bruk det til å søke / filtrere / gruppere i 
+skriveapi'ets kontrollpanel. Endringssett som hører sammen kan ha samme 
+klientinfo, evt med små perturbasjoner. 
 
 endringssett - Klasse som håndterer alle steg i skriveprosessen: 
  - registrering
@@ -21,6 +27,9 @@ automatisk ved å sende dem inn som argument når du oppretter endringssett-obje
 
 Eksempel
     e1 = endringssett( <dine skriveklare data>)
+alternativt
+    e1.endringssett()
+    e1.data = <dine skriveklare data>
 
 Eksempler på endringssett finner du i /generator/ - endepunktet i docker-instans, 
 evt https://www.vegvesen.no/nvdb/apiskriv/generator/
@@ -38,6 +47,23 @@ Alternativt
     endringsett.lag_forbindelse() # Lager ny forbindelse til apiskriv
     endringssett.forbindelse.login( username=<du>, pw=<dittpassord>)
 
+EKSEMPEL, fullstending løype
+    e1 = endringssett(<dine skriveklare data>)
+    
+    ELLER
+    e1 = endringssett()
+    e1.data = <dine skriveklare data>
+    
+    e1.lag_forbindelse()
+    e1.forbindelse.login(username='deg', pw='dittPw', miljo='docker')
+    # Gjør det enklere å søke / filtrere i kontrollpanelet
+    e1.forbindelse.klientinfo('Tekststreng for å skille / gruppere dine endringssett')
+    e1.registrer()
+    e1.valider()
+    e1.validertrespons
+    e1.start_skriving()
+    e1.sjekkfremdrift()
+    
 
 	
 """
@@ -47,8 +73,22 @@ import getpass
 import copy
 
 class apiskrivforbindelse():
+    """
+    Håndterer innlogging og kommunikasjon mot skriveAPI.
+    """
     
     def __init__( self, miljo='nvdbdocker', content='json'):
+        """
+        Oppretter en instans av apiskrivforbindelse
+        
+        Arguments: 
+            None 
+        Keywords: 
+            miljo: string, 'nvdbdocker' | 'utv' | 'test' | 'prod'
+                    (Kan droppes, men settes da ved innlogging)
+            content: string 'json' (default) | 'xml'
+                
+        """ 
         
         self.headers = {  "Content-Type" : "application/json", 
                             "Accept" : "application/json", 
@@ -63,6 +103,19 @@ class apiskrivforbindelse():
                               
     def login(self, miljo='nvdbdocker', proxies=False, username='jajens', 
               pw=None, klient=None): 
+        """
+        Logger inn i skriveAPI.
+        
+        Arguments: 
+            None
+            
+        Keywords: 
+            miljo : string, en av 'nvdbdocker' (default), 'utv', 'test', 'prod'
+            
+            proxies : Boolean True | False (default) 
+                angir om vi skal prøve SVV-interrne proxy
+        
+        """
         
         if miljo == 'nvdbdocker': 
             
@@ -126,6 +179,12 @@ class apiskrivforbindelse():
             self.klientinfo(klient)
         
     def loggut(self): 
+        """
+        Logger ut av skriveAPI.
+        
+        Arguments: 
+            None 
+        """ 
         
         if 'vegvesen' in self.apiurl: 
             self.debug = self.requestsession.get( self.apiurl + '/openam/UI/Logout') 
@@ -164,9 +223,22 @@ class apiskrivforbindelse():
         """
         self.headers['X-Client'] = str( klientinfo )
     
-    def skrivtil( self, path, data): 
+    def skrivtil( self, path, data, **kwargs): 
         """
-        Poster data til NVDB api skriv
+        Poster data til NVDB api skriv.
+        
+        Arguments:
+            path : URL, enten relativt til /apiskriv, eller fullstendig adresse
+            
+            data : Datastrukturen som skal postes. Enten json (default) 
+                    eller xml (angis i så fall med content-argumentet ved 
+                    opprettelse av endringssett-objektet, eller ved å sette 
+                    manuelt 
+                    endringsett.headers["Content-Type"] = 'application/xml')
+                    
+        Keywords: 
+            Eventuelle nøkkelord-argumenter sendes til python request-modulen
+
         """
         
         if path[0:4] == 'http': 
@@ -178,18 +250,25 @@ class apiskrivforbindelse():
             return self.requestsession.post( url=url, 
                                      proxies=self.proxies, 
                                      headers=self.headers, 
-                                     data = data)
+                                     data = data, **kwargs)
         elif self.headers['Content-Type'] == 'application/json': 
             return self.requestsession.post( url=url, 
                                     proxies=self.proxies, 
                                     headers=self.headers, 
-                                    json = data)
+                                    json = data, **kwargs)
         else: 
             print( "Sjekk CONTENT-TYPE på api-forbindelse objektet")
             return None
         
     def les( self, path, **kwargs): 
-        """Http GET requests til NVDB REST skriveapi
+        """
+        Http GET requests til NVDB REST skriveapi
+        
+        Arguments:
+            path : URL, enten relativt til /apiskriv, eller fullstendig 
+            
+        Keywords: 
+            Eventuelle nøkkelord-argumenter sendes til python request-modulen
         """
         
         if path[0:4] == 'http': 
@@ -206,7 +285,7 @@ class apiskrivforbindelse():
         
 
     def checklock( self, endringsettID ): 
-        """Python request kall for å sjekke låser for endringssett 
+        """Python request kall for å sjekke låser for endringssett.
         
         Returnerer python requests objekt. 
         """
@@ -217,7 +296,8 @@ class apiskrivforbindelse():
         return r 
         
     def checklock_prettyprint( self, endringsettID, printheader=False):
-        """Pen utskrift av låser som evt blokkerer endringssettet
+        """
+        Pen utskrift av låser som evt blokkerer endringssettet.
         """
         r = self.checklock( endringsettID)
         locks = r.json()
@@ -231,6 +311,33 @@ class apiskrivforbindelse():
             print( "No locks for", endringsettID)
 
 class endringssett(): 
+    """
+    Klasse for hele prosessen med skriving til NVDB skriveAPI. 
+    
+    Spiller sammen med apiskrivforbindelse, som håndterer REST kallene. 
+    Bruk funksjonen lag_forbindelse() for å knytte en instans av 
+    apiskrivforbindelse til endringssett-objektet ditt.
+    
+    EKSEMPEL, fullstending løype
+    e1 = endringssett(<dine skriveklare data>)
+    
+    ELLER
+    e1 = endringssett()
+    e1.data = <dine skriveklare data>
+    
+    e1.lag_forbindelse()
+    e1.forbindelse.login(username='deg', pw='dittPw', miljo='docker')
+    # Gjør det enklere å søke / filtrere i kontrollpanelet
+    e1.forbindelse.klientinfo('Tekststreng for å skille / gruppere dine endringssett')
+    e1.registrer()
+    e1.valider()
+    e1.validertresultat
+    e1.start_skriving()
+    e1.sjekkfremdrift()
+
+    """ 
+    
+    
     
     def __init__(self, data=None):
 
@@ -248,7 +355,9 @@ class endringssett():
     
     def lag_forbindelse( self, apiskriv=None): 
         """
-        Oppretter en forbindelse til apiskriv. Du kan (gjen)bruke en 
+        Oppretter en forbindelse til apiskriv. 
+        
+        Du kan (gjen)bruke en 
         eksisterende forbindelse eller opprette en ny
         
         Forbindelsen er en instans av apiskrivforbindelse-objektet, som 

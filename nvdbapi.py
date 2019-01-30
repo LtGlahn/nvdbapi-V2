@@ -315,7 +315,7 @@ class nvdbVegnett:
                     '"X-Kontaktperson" : "ola.nordmann@eposten.din" }\n' ))
             warn( mytext ) 
 
-    def miljo(self, *args, silent=False):
+    def miljo(self, *args):
         """Kun internt på vegvesen-nettet!
         Kan endre hvilket miljø vi går mot.
         Parametre: 
@@ -343,8 +343,8 @@ class nvdbVegnett:
                 print( "Forstod ikke parameter:", args[0])
                 print("Lovlige valg: utv, test eller prod")
         
-        if not silent: 
-            print( "Bruker ", self.apiurl)
+        # if not silent: 
+        print( "Bruker ", self.apiurl)
      
             
 class nvdbFagdata(nvdbVegnett): 
