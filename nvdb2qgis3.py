@@ -7,48 +7,6 @@ from qgis.core import QgsProject,  QgsVectorLayer, QgsFeature, QgsGeometry, QgsP
 from nvdbapi import nvdbVegnett, nvdbFagdata, nvdbFagObjekt, finnid
 
 
-def mytest():
-    
-    mem_layer = QgsVectorLayer( "Point?crs=epsg:25833&field=id:integer" + \
-        "&field=description:string" + \
-        "&index=yes", 
-        "Test", 
-        "memory") 
-        
-    QgsProject.instance().addMapLayer(mem_layer) 
-    
-    mem_layer.startEditing()
-    mypoint = QgsPoint( 274549,7042095)
-    myfeat = QgsFeature()
-    myfeat.setGeometry( QgsGeometry.fromPointXY( mypoint) ) 
-    myfeat.setAttributes([ 1, 'Test']) 
-    mem_layer.addFeature(myfeat) 
-    mem_layer.commitChanges()
-    
-    print( "Fanken æ e flink!") 
-    
-
-def lagGeomFraWkt(): 
-
-    mem_layer = QgsVectorLayer( "Point?crs=epsg:25833&field=id:integer" + \
-        "&field=description:string" + \
-        "&index=yes", 
-        "Test", 
-        "memory") 
-        
-    QgsProject.instance().addMapLayer(mem_layer) 
-    
-    mem_layer.startEditing()
-    myfeat = QgsFeature()
-    myfeat.setGeometry( QgsGeometry.fromWkt( 'POINT ( 274539 7042095)' ) ) 
-    myfeat.setAttributes( [2, 'fra WKT']) 
-    mem_layer.addFeature(myfeat) 
-    mem_layer.commitChanges()
-    
-    print( "Fanken æ e flink!") 
-
-# linjelag = QgsVectorLayer( "Linestring?crs=epsg:25833&field=id:integer&field=description:string&index=yes", "Testlinje", "memory") 
-
 class memlayerwrap(): 
     """
     Wrapper rundt QGIS memorylayer. Blir først synlig i QGIS når du føyer til features. 
@@ -67,57 +25,83 @@ class memlayerwrap():
         self.geomtype = geomtype
         self.layer = QgsVectorLayer(geomtype + '?crs=epsg:25833&index=yes&' + egenskapdef, navn, 'memory')
         
-    def addFeature(self, mittobj):
+    def addFeature(self, egenskaper, wktgeometri):
         if not self.active:
             QgsProject.instance().addMapLayer(self.layer)
             self.layer.startEditing() 
             self.active = True 
         
         feat = QgsFeature()    
-        feat.setAttributes( mittobj['egenskaper'] )
-        mygeom = QgsGeometry.fromWkt( mittobj['wktgeom'] )
+        feat.setAttributes( egenskaper )
+        mygeom = QgsGeometry.fromWkt( wktgeometri )
         
         # Tricks for å tvinge 3d => 2d koordinater
-        if 'Point' in self.geomtype: 
+        if 'Point' in self.geomtype:
+            pass
             feat.setGeometry( QgsGeometry.fromPointXY( mygeom.asPoint()) )  
         elif 'Linestring' in self.geomtype: 
-            pass 
-        
+            pass
+        elif 'Polygon' in self.geomtype:
+            pass
+        else: 
+            print('Geomtype not supported', self.geomtype)
             # feat.setGeometry(  )
-        self.layer.addFeature(feat)
+            
+        self.layer.addFeature( feat )
+        
+        return( feat ) 
         
     def ferdig( self): 
         if self.active: 
             self.layer.commitChanges()
-
-#class egenskapmapping( ): 
-#    """
-#    Lager mapping mellom NVDB datakatalog-definisjon => qgis lagdefinisjon. 
-#    """
-#    
-#    def __init__(self, fagdataobj): 
-#    
-#        self.objektTypeId = fagdataobj.objektTypeId
+            self.active = False
         
         
-def qgisdakat(  fagdataobj):
-    """Lager attributt-definisjon for QGIS objekter ihht datakatalogen"""
+def lagQgisDakat(  sokeobjekt):
+    """
+    Lager attributt-definisjon for QGIS objekter ihht datakatalogen
+    
+    
+    
+    TODO: 
+        DOKUMENTASJON
+        fraDato, sistmodifisert skal være QGIS datoer, ikke tekst
+        Behov for å fjerne visse tegn fra egenskapsnavn som QGIS bruker?
+            f.eks &, : ?             
+    
+    """
     # Liste med ID'er for egenskapstypene for denne objekttypen  
     egIds = [] 
-    # Liste med QGIS datatyper. Matcher listen med egenskapstyper. 
-    qgisEg = []
-    dakat = fagdataobj.anrope( 'vegobjekttyper/' + str( fagdataobj.objektTypeId) )
+    # Liste med QGIS datatyper. Kort liste med metadata først, deretter matcher listen med egenskapstyper. 
+    qgisEg = ['field=nvdbid:int', 'versjon:int', 'fraDato:string', 'sistmodifisert:string' ]
 
-    for eg in dakat['egenskapstyper']: 
+    for eg in sokeobjekt.objektTypeDef['egenskapstyper']: 
         egIds.append( eg['id'] ) 
         qgisEg.append( egenskaptype2qgis( eg) ) 
+        
     
+    qgisDakat = '&field='.join( qgisEg )
     
-    return egIds, qgisEg
+    return egIds, qgisEg, qgisDakat
         
 def egenskaptype2qgis( egenskaptype): 
     """
     Omsetter en enkelt NVDB datakatalog egenskapdefinisjon til QGIS lagdefinisjon-streng
+
+    Kan raffineres til flere datatyper. Noen aktuelle varianter
+    
+    #Tekst - Eksempel: Strindheimtunnelen
+    #Tall - Eksempel: 86
+    #Flyttall - Eksempel: 86.0
+    #Kortdato - Eksempel: Måned-dag, 01-01
+    #Dato - Eksempel: År-Måned-dag, 2015-01-01
+    #Klokkeslett - Eksempel: 13:37
+    #Geometri - Geometrirepresentasjon
+    #Struktur - Verdi sammensatt av flere verdier
+    #Binærobjekt - Eksempel: Et dokument eller et bilde
+    #Boolean - True eller false
+    #Liste - En liste av objekter
+
     """
     defstring = egenskaptype['navn']
     if 'Tall' in egenskaptype['datatype_tekst']:
@@ -132,24 +116,31 @@ def egenskaptype2qgis( egenskaptype):
     
     return defstring 
     
-#Tekst - Eksempel: Strindheimtunnelen
-#Tall - Eksempel: 86
-#Flyttall - Eksempel: 86.0
-#Kortdato - Eksempel: Måned-dag, 01-01
-#Dato - Eksempel: År-Måned-dag, 2015-01-01
-#Klokkeslett - Eksempel: 13:37
-#Geometri - Geometrirepresentasjon
-#Struktur - Verdi sammensatt av flere verdier
-#Binærobjekt - Eksempel: Et dokument eller et bilde
-#Boolean - True eller false
-#Liste - En liste av objekter
+    
+def nvdbFeat2qgisProperties( mittobj, egIds): 
+    """
+    Omsetter egenskapsverdiene pluss utvalgte metadata fra et 
+    NVDB fagobjekt til en liste med QGIS verdier. 
+    """ 
+    qgisprops = [ mittobj.id, mittobj.metadata['versjon'], 
+                 mittobj.metadata['startdato'], 
+                 mittobj.metadata['sist_modifisert'] ]
+    
+    for eg in egIds: 
+        
+        qgisprops.append( mittobj.egenskapverdi(eg))
+    
+    return qgisprops
 
-def nvdb2kart( sokeobjekt, lagnavn='FintKartlag'): 
+
+
+def nvdb2kart( sokeobjekt, lagnavn=None, geometritype=None): 
     """
     Første spede begynnelse på nvdb2qgis. 
 	
-	Vil ta et søkeobjekt fra  nvdbapi-v2 biblioteket (nvdbFagdata eller nvdbVegnett) og hente 
-	tilhørende data fra NVDB-api V2 innenfor QGIS-kartflatens utstrekniing 
+	Vil ta et søkeobjekt fra  nvdbapi-v2 biblioteket (nvdbFagdata eller 
+    nvdbVegnett) og hente tilhørende data fra NVDB-api V2 innenfor 
+    QGIS-kartflatens utstrekniing 
 	
 	UMODENT: TODO
 		- B
@@ -159,35 +150,91 @@ def nvdb2kart( sokeobjekt, lagnavn='FintKartlag'):
         objekter:list of dict En liste med dict som ser slik ut: 
             { 'egenskaper' [ 'id' : 1, 'beskrivelse' : 'Tekst'], 'wktgeom' : 'WKT-streng' }
             
-            WKT - streng kan (inntil videre) være POINT eller LINESTRING. Bygger opp en generisk håndtering 
-            stein for stein...
         
 
     Keywords: 
-        lagnavn='FintKartlag' Navn på laget
+        lagnavn='FintKartlag' Navn på laget (default: "Vegnett" eller objekttypenavn )
+        
+        geometri=None eller en av ['egen', 'vegnett', 'flate', 'linje',  'punkt']
+            Detaljstyring av hvilken egeongeometri-variant som foretrekkes. 
+            Default = None gir... (ikke bestemt meg ennå)
  
 
 	""" 
+    # Sjekker input data
+    gtyper = [ 'flate', 'linje', 'punkt', 'vegnett' ]
+    if geometritype and isinstance(geometritype, str ) and geometritype.lower() not in gtyper: 
+        print( 'nvdb2kart: Ukjent geometritype angitt:', geometritype, 
+            'skal være en av:', gtyper) 
+        print( 'nvdb2kart: Setter geometritype=vegnett') 
+        geometritype = 'vegnett'
+        
+    # Bruker datakatalog-navnet om ikke annet er angitt: 
+    if not lagnavn: 
+        lagnavn = sokeobjekt.objektTypeDef['navn']
 	
     if isinstance( sokeobjekt, nvdbFagdata): 
-	
-	
-        punktlag = memlayerwrap( 'Point', 'field=id:integer&field=description:string', lagnavn) 
-        linjelag = memlayerwrap( 'MultiLinestring', 'field=id:integer&field=description:string', lagnavn) 
+
+		# Datakatalogdiefinisjon ihtt Qgis-terminologi 
+        (egIds, qgisEg, qgisDakat ) = lagQgisDakat(sokeobjekt)
         
-		# Må nok ha mer 
-		
-    for feat in objekter: 
-        if 'POINT' in feat['wktgeom']: 
-            punktlag.addFeature(feat)
-        elif 'LINESTRING' in feat['wktgeom']: 
-            linjelag.addFeature(feat)
-        else:
-            print( 'Ukjent geometritype:', feat['wktgeom'])
+        punktlag = memlayerwrap( 'Point',           qgisDakat, str(lagnavn))
+        linjelag = memlayerwrap( 'MultiLinestring', qgisDakat, str(lagnavn)) 
+        flatelag = memlayerwrap( 'Polygon',         qgisDakat, str(lagnavn)) 
+	
+        mittobj = sokeobjekt.nesteNvdbFagObjekt()
+        count = 0 
+        while mittobj: 
+            count += 1
+            if count % 500 == 0 or count in [1, 10, 20, 50, 100]: 
+                print( 'Lagt til ', count, 'av', sokeobjekt.antall, 'nvdb objekt i kartlag', lagnavn) 
+
+            # Qgis attributter = utvalgte metadata + egenskapverdier etter datakatalogen 
+            egenskaper = nvdbFeat2qgisProperties( mittobj, egIds ) 
+                
+            # Bestemmer geometritype hvis ubestemt: 
+            if not geometritype: 
+                
+                if mittobj.egenskapverdi( 'Geometri, flate')    and 'POLYGON' in mittobj.egenskapverdi( 'Geometri, flate'):
+                    geometritype = 'flate'
+                elif  mittobj.egenskapverdi( 'Geometri, linje') and 'LINESTRING' in mittobj.egenskapverdi( 'Geometri, linje'):
+                    geometritype = 'linje'
+                elif mittobj.egenskapverdi( 'Geometri, punkt')  and 'POINT' in mittobj.egenskapverdi( 'Geometri, punkt'): 
+                    geometritype = 'punkt'
+                else:
+                    geometritype = 'vegnett'
+                                        
+            mygeom = mittobj.egenskapverdi( 'Geometri, ' + geometritype ) 
+#             print( 'debug', mittobj.id, geometritype, mygeom) 
+            
+            
+            # Bruker vegnett hvis angitt, eller hvis vi ikke fant 
+            # den egengeometrivarianten vi helst vil ha
+            if geometritype.lower() != 'vegnett' and mygeom:
+                pass
+#                print( 'debug', mittobj.id, 'bruker denna egengeometrien:', mygeom, geometritype )
+
+            else:
+                mygeom = mittobj.wkt() 
+#               print( 'debug', mittobj.id, ': Bruker vegnettgeom', mygeom )
+                # TODO må lage funksjon som itererer over vegnett-segmenter! 
+                # Enten lager ett objekt per vegsegment, eller setter dem sammen til multiline-string... 
+            
+            if 'point' in mygeom.lower(): 
+                punktlag.addFeature( egenskaper, mygeom )
+            elif 'line' in mygeom.lower(): 
+                linjelag.addFeature( egenskaper, mygeom)
+            elif 'polygon' in mygeom().lower():
+                flatelag.addFeature( egenskaper, mygeom) 
+            else:
+                print( debug, mittobj.id, 'Ukjent geometritype:', feat.geometry())
     
-    punktlag.ferdig()
-    linjelag.ferdig()
- 
-    # # 274549,7042095
+            mittobj = sokeobjekt.nesteNvdbFagObjekt()
+            # Slutt while-løkke 
 
-
+        punktlag.ferdig()
+        linjelag.ferdig()
+        flatelag.ferdig()     
+        
+        return punktlag, linjelag, flatelag   
+        
