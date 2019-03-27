@@ -47,9 +47,9 @@ class memlayerwrap():
             print('Geomtype not supported', self.geomtype)
             # feat.setGeometry(  )
             
-        self.layer.addFeature( feat )
+        success = self.layer.addFeature( feat )
         
-        return( feat ) 
+        return( success ) 
         
     def ferdig( self): 
         if self.active: 
@@ -134,7 +134,8 @@ def nvdbFeat2qgisProperties( mittobj, egIds):
 
 
 
-def nvdb2kart( sokeobjekt, lagnavn=None, geometritype=None): 
+def nvdb2kart( sokeobjekt, lagnavn=None, geometritype='beste', 
+                                        inkludervegnett='beste'): 
     """
     Første spede begynnelse på nvdb2qgis. 
 	
@@ -146,29 +147,55 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype=None):
 		- B
 	
     Arguments: 
-        sokeobjekt: Søkeobjekt fra nvdbapi.nvdbVegnett eller nvdbapi.nvdbFagdata
-        objekter:list of dict En liste med dict som ser slik ut: 
-            { 'egenskaper' [ 'id' : 1, 'beskrivelse' : 'Tekst'], 'wktgeom' : 'WKT-streng' }
-            
-        
+        sokeobjekt: Søkeobjekt fra nvdbapi.nvdbVegnett eller
+                                                    nvdbapi.nvdbFagdata
 
     Keywords: 
-        lagnavn='FintKartlag' Navn på laget (default: "Vegnett" eller objekttypenavn )
+        lagnavn=None Navn på kartlagetlaget 
+            (default: "Vegnett" eller objekttypenavn )
         
-        geometri=None eller en av ['egen', 'vegnett', 'flate', 'linje',  'punkt']
-            Detaljstyring av hvilken egeongeometri-variant som foretrekkes. 
-            Default = None gir... (ikke bestemt meg ennå)
+        geometri=None eller en av ['egen', 'vegnett', 'flate', 'linje',  
+                                                    'punkt', 'alle' ]
+            Detaljstyring av hvilken egeongeometri-variant som 
+            foretrekkes. Defaultverdien None returnerer den mest 
+            "verdifulle" geometritypen som finnes
+            etter den samme prioriteringen som Vegkart-visningen: 
+                1. Egengeometri, flate
+                2. Egengeometri, linje
+                3. Egengeometri, punkt
+                4. Vegnettgeometri
+            'alle' betyr at vi viser ALLE egengeometriene til objektet 
+            pluss vegnettsgeometri (hvis da ikke dette overstyres med 
+            valget inkludervegnett='aldri')
+                
+        inkludervegnett='beste' | 'alltid' | 'aldri' 
+            Default='beste' betyr at vi kun viser vegnettsgeometri hvis det 
+                    ikke finnes egengeometri. 
+                    (Tilsvarer geometritype="beste") 
+            'alltid' :  Vis ALLTID vegnettsgeometri i tillegg til 
+                        evt egeomgeometri(er) 
+            'aldri'  :  Vis aldri vegnettsgeometri 
+                        dette betyr at du ikke får noen representasjon
+                        av objektet. Du mister altså informasjon 
  
+        Noen av nøkkelordkombinasjonene kan altså 
+        gi 0, 1 eller flere  visninger av samme objekt. Det vil si at 
+        samme objekt blir til 0, 1, eller flere forekomster i  
 
 	""" 
-    # Sjekker input data
-    gtyper = [ 'flate', 'linje', 'punkt', 'vegnett' ]
-    if geometritype and isinstance(geometritype, str ) and geometritype.lower() not in gtyper: 
-        print( 'nvdb2kart: Ukjent geometritype angitt:', geometritype, 
+    
+    # Kortform geometritype 
+    gt = geometritype
+        
+    # Sjekker input data    
+    gtyper = [ 'flate', 'linje', 'punkt', 'vegnett', 'alle' ]
+    if gt and isinstance(gt, str ) and gt.lower() not in gtyper: 
+        print( 'nvdb2kart: Ukjent geometritype angitt:', gt, 
             'skal være en av:', gtyper) 
         print( 'nvdb2kart: Setter geometritype=vegnett') 
-        geometritype = 'vegnett'
+        gt = 'vegnett'
         
+    
     # Bruker datakatalog-navnet om ikke annet er angitt: 
     if not lagnavn: 
         lagnavn = sokeobjekt.objektTypeDef['navn']
@@ -179,8 +206,12 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype=None):
         (egIds, qgisEg, qgisDakat ) = lagQgisDakat(sokeobjekt)
         
         punktlag = memlayerwrap( 'Point',           qgisDakat, str(lagnavn))
-        linjelag = memlayerwrap( 'MultiLinestring', qgisDakat, str(lagnavn)) 
-        flatelag = memlayerwrap( 'Polygon',         qgisDakat, str(lagnavn)) 
+        multipunktlag = memlayerwrap( 'MultiPoint',           qgisDakat, str(lagnavn) + '_multi' )
+        linjelag = memlayerwrap( 'Linestring', qgisDakat, str(lagnavn)) 
+        multilinjelag = memlayerwrap( 'MultiLinestring', qgisDakat, str(lagnavn) + '_multi' ) 
+        flatelag = memlayerwrap( 'Polygon',         qgisDakat, str(lagnavn))         
+        multiflatelag = memlayerwrap( 'MultiPolygon',         qgisDakat, str(lagnavn) + '_multi') 
+        collectionlag = memlayerwrap( 'GeometryCollection',         qgisDakat, str(lagnavn) + '_geomcollection') 
 	
         mittobj = sokeobjekt.nesteNvdbFagObjekt()
         count = 0 
@@ -189,10 +220,38 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype=None):
             if count % 500 == 0 or count in [1, 10, 20, 50, 100]: 
                 print( 'Lagt til ', count, 'av', sokeobjekt.antall, 'nvdb objekt i kartlag', lagnavn) 
 
+            segmentcount = 0 
             # Qgis attributter = utvalgte metadata + egenskapverdier etter datakatalogen 
             egenskaper = nvdbFeat2qgisProperties( mittobj, egIds ) 
+            
+            # Flagg for å holde styr på hvordan det går med forsøk på å vise 
+            # egengeometri
+            beste_gt_suksess = False 
+
+                            
+            if gt in [ 'alle', 'flate', 'beste' ]: 
+                pass
                 
-            # Bestemmer geometritype hvis ubestemt: 
+                
+                # beste_gt_suksess = True
+            elif gt in [ 'alle', 'linje' ] or (gt == 'beste' and not beste_gt_suksess): 
+                pass 
+                
+                # beste_gt_suksess = True
+            elif gt in ['alle', 'punkt' ] or (gt == 'beste' and not beste_gt_suksess): 
+                pass
+
+                # beste_gt_suksess = True                
+            elif (gt== 'vegnett') or (inkludervegnett == 'alltid') or \
+                            (gt == 'beste' and not beste_gt_suksess):
+                pass                 
+            
+            else:
+                # TODO Debug logikken, hva har vi glemt?  
+                print( 'DEBUG! Viser ikke geometri for', mittobj.id, 'burde vi det?')
+                print( 'Valgt geometritype=', gt) 
+                print( 'Inkluder vegnett? =', inkludervegnett) 
+            
             if not geometritype: 
                 
                 if mittobj.egenskapverdi( 'Geometri, flate')    and 'POLYGON' in mittobj.egenskapverdi( 'Geometri, flate'):
@@ -202,7 +261,8 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype=None):
                 elif mittobj.egenskapverdi( 'Geometri, punkt')  and 'POINT' in mittobj.egenskapverdi( 'Geometri, punkt'): 
                     geometritype = 'punkt'
                 else:
-                    geometritype = 'vegnett'
+                    geometritype = 'vegnett' or (inkludervegnett == 'alltid') or ( ) 
+
                                         
             mygeom = mittobj.egenskapverdi( 'Geometri, ' + geometritype ) 
 #             print( 'debug', mittobj.id, geometritype, mygeom) 
@@ -220,11 +280,11 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype=None):
                 # TODO må lage funksjon som itererer over vegnett-segmenter! 
                 # Enten lager ett objekt per vegsegment, eller setter dem sammen til multiline-string... 
             
-            if 'point' in mygeom.lower(): 
+            if 'point' in mygeom[0:7].lower(): 
                 punktlag.addFeature( egenskaper, mygeom )
-            elif 'line' in mygeom.lower(): 
+            elif 'line' in mygeom[0:7].lower(): 
                 linjelag.addFeature( egenskaper, mygeom)
-            elif 'polygon' in mygeom().lower():
+            elif 'polygon' in mygeom[0:10]().lower():
                 flatelag.addFeature( egenskaper, mygeom) 
             else:
                 print( debug, mittobj.id, 'Ukjent geometritype:', feat.geometry())
@@ -235,6 +295,11 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype=None):
         punktlag.ferdig()
         linjelag.ferdig()
         flatelag.ferdig()     
+        multipunktlag.ferdig()
+        multilinjelag.ferdig()
+        multiflatelag.ferdig()
+        collectionlag.ferdig()
+
         
         return punktlag, linjelag, flatelag   
         
