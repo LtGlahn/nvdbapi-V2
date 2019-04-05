@@ -1,4 +1,4 @@
-# Jobb interaktivt mot NVDB api V2 
+ # Jobb interaktivt mot NVDB api V2 
 
 Jobb interaktivt og objektorientert mot NVDB api V2! 
 
@@ -20,13 +20,13 @@ Hovedrutinen *nvdbapi.py* skal fungere både med python 2 og 3. Et par av eksemp
 
 1. Et _*søkeobjekt*_ håndterer all mikk-makk rundt spørringer mot NVDB api, paginering etc. 
 1. Vi har to typer søkeobjekter
-  * nvdbVegnett - henter veglenker
-  * nvdbFagdata - henter en av de 400 fagdatatypene vi har definert i [NVDB datakatalog](https://datakatalogen.vegdata.no/)
+    * nvdbVegnett - henter veglenker
+    * nvdbFagdata - henter en av de 400 fagdatatypene vi har definert i [NVDB datakatalog](https://datakatalogen.vegdata.no/)
 2. Søkeobjektene har funksjoner for å avgrense søk, og hente ut alle data som tilfredssstiller søket. 
 3. Noen funksjoner _(f.eks. nvdb2geojson)_ tar et slik søkeobjekt og transformerer til andre datastrukturer, tabulære data m.m.
 4. Fra søkeobjektet kan du iterere over alle NVDB-objekter som tilfredsstiller søket ditt: 
-  1. Enten som JSON-objekt [rett fra NVDB api](https://api.vegdata.no/endepunkt/vegobjekter.html "Vegobjekter i NVDB api")
-  2. Eller som et _*nvdbFagObjekt*_, som har en del fiffige funksjoner for å hente ut egenskapverdier m.m. 
+    1. Enten som JSON-objekt [rett fra NVDB api](https://api.vegdata.no/endepunkt/vegobjekter.html "Vegobjekter i NVDB api")
+    2. Eller som et _*nvdbFagObjekt*_, som har en del fiffige funksjoner for å hente ut egenskapverdier m.m. 
 
 ## nvdbVegnett 
 
