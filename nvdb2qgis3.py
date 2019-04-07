@@ -25,34 +25,28 @@ class memlayerwrap():
         self.geomtype = geomtype
         self.layer = QgsVectorLayer(geomtype + '?crs=epsg:25833&index=yes&' + egenskapdef, navn, 'memory')
         
-    def addFeature(self, egenskaper, wktgeometri):
+    def addFeature(self, egenskaper, qgisgeom):
         if not self.active:
             QgsProject.instance().addMapLayer(self.layer)
             self.layer.startEditing() 
             self.active = True 
         
         feat = QgsFeature()    
-        feat.setAttributes( egenskaper )
-        mygeom = QgsGeometry.fromWkt( wktgeometri )
-        
-        # Tricks for å tvinge 3d => 2d koordinater
-        if 'Point' in self.geomtype:
-            pass
-            feat.setGeometry( QgsGeometry.fromPointXY( mygeom.asPoint()) )  
-        elif 'Linestring' in self.geomtype: 
-            pass
-        elif 'Polygon' in self.geomtype:
-            pass
-        else: 
-            print('Geomtype not supported', self.geomtype)
-            # feat.setGeometry(  )
+        feat.setAttributes( egenskaper )        
+        feat.setGeometry( qgisgeom )
             
         success = self.layer.addFeature( feat )
+        if not success: 
+            print( "Klarte ikke føye til feature") 
+            print( egenskaper[0:5], '...') 
+            print( wktgeometri[0:50], '...'  ) 
+        
         
         return( success ) 
         
     def ferdig( self): 
         if self.active: 
+            self.layer.updateExtents() 
             self.layer.commitChanges()
             self.active = False
         
@@ -133,15 +127,91 @@ def nvdbFeat2qgisProperties( mittobj, egIds):
     return qgisprops
 
 
+def nvdb2kart( nvdbref, iface, kunfagdata=True, kunvegnett=False, 
+            miljo='prod',lagnavn=None, **kwargs):
+    """
+    Legger noe fra NVDB til kartflaten. Dette kan være en ID 
+    til nvdb veglenke(r) eller  fagobjekt, eller et søkeobjekt 
+    (nvdbFagdata eller nvdbVegnett). Et søkeobjekt vil bli avgrenset
+    til QGIS kartflate. (Hvis dette ikke er ønsket - send direkte 
+    til funksjonen nvdb2qgis) 
+    
+    Nøkkelordene kunfagdata, kunvegnett og miljø sendes til funksjonen
+    nvdbapi.finnid.
+    
+    Resten av nøkkeordene sendes til funksjonen 
+    """
 
-def nvdb2kart( sokeobjekt, lagnavn=None, geometritype='beste', 
-                                        inkludervegnett='beste'): 
+    # Konverterer string => int
+    if isinstance(nvdbref, str): 
+        try: 
+            nvdbref = int(nvdbref) 
+        except ValueError: 
+            pass
+            
+    
+    
+    if (isinstance( nvdbref, nvdbFagdata) or \
+                                    isinstance( nvdbref, nvdbVegnett)): 
+             
+        ext = iface.mapCanvas().extent()
+
+        kartutsnitt = str(ext.xMinimum()) + ',' + \
+            str(ext.yMinimum()) + ',' + str(ext.xMaximum()) + \
+            ',' + str(ext.yMaximum()) 
+        nvdbref.addfilter_geo( { 'kartutsnitt' : kartutsnitt }) 
+        
+        nvdbsok2qgis( nvdbref, **kwargs )
+        
+    elif isinstance( nvdbref, int): 
+        
+        fag = finnid( nvdbref, kunfdagdata=kunfagdata, 
+            kunvegnett=kunvegnett, miljo=miljo)  
+        
+        if fag: 
+            if isinstance( fag, dict) and 'id' in fag.keys():
+                sokeobj = nvdbFagdata( fag['metadata']['type']['id'] ) 
+                sokeobj.data['objekter'].append( fag) 
+                sokeobj.antall = 1
+                
+                if not lagnavn: 
+                    lagnavn = str(fag['metadata']['type']['id']) + \
+                                '_' + str( nvdbref) 
+                 
+            elif isinstance( fag, list) and len(fag) > 0 and \
+            isinstance( fag[0], dict) and 'veglenkeid' in fag[0].keys():
+                
+                sokeobj = nvdbVegnett()
+                sokeobj.data['objekter'] = fag
+                sokeobj.antall = len( fag) 
+ 
+                lagnavn = 'veglenke_' + str( nvdbref) 
+ 
+            else: 
+                print( "fant ingen data???", str(nvdbref) )
+                return
+            
+            sokeobj.paginering['antall'] = 1
+            sokeobj.paginering['meredata'] = False
+            sokeobj.paginering['initielt'] = False                
+            sokeobj.paginering['hvilken'] = 0
+            
+            # Sender til kartet
+            nvdbsok2qgis( sokeobj, lagnavn=lagnavn, **kwargs)  
+        
+    else: 
+        print( "kjente ikke igjen", nvdbref, 
+                        "som NVDB referanse eller søkeobjekt") 
+        
+
+
+def nvdbsok2qgis( sokeobjekt, lagnavn=None, 
+            geometritype='beste', inkludervegnett='beste'): 
     """
     Første spede begynnelse på nvdb2qgis. 
 	
 	Vil ta et søkeobjekt fra  nvdbapi-v2 biblioteket (nvdbFagdata eller 
-    nvdbVegnett) og hente tilhørende data fra NVDB-api V2 innenfor 
-    QGIS-kartflatens utstrekniing 
+    nvdbVegnett) og hente tilhørende data fra NVDB-api V2. 
 	
 	UMODENT: TODO
 		- B
@@ -153,6 +223,13 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype='beste',
     Keywords: 
         lagnavn=None Navn på kartlagetlaget 
             (default: "Vegnett" eller objekttypenavn )
+        
+        kartflate=True | False Bruk QGis kartflate som boundingBox for 
+            å avgrense søket geografisk DERSOM søket ikke allerede er
+            avgrenset på et område (fylke, kommune, kontraktsområde, 
+            region) 
+            NB! Hvis søkeobjektet allere er avgrenset til et område 
+            (fylke, 
         
         geometri=None eller en av ['egen', 'vegnett', 'flate', 'linje',  
                                                     'punkt', 'alle' ]
@@ -175,12 +252,17 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype='beste',
             'alltid' :  Vis ALLTID vegnettsgeometri i tillegg til 
                         evt egeomgeometri(er) 
             'aldri'  :  Vis aldri vegnettsgeometri 
-                        dette betyr at du ikke får noen representasjon
-                        av objektet. Du mister altså informasjon 
+                        dette betyr at objektet kun vises hvis det 
+                        har egengeometri
  
         Noen av nøkkelordkombinasjonene kan altså 
-        gi 0, 1 eller flere  visninger av samme objekt. Det vil si at 
-        samme objekt blir til 0, 1, eller flere forekomster i  
+        gi 0, 1 eller mange  visninger av samme objekt. Det vil si at 
+        samme objekt blir til 0, 1, eller flere forekomster i Qgis.
+         
+        Et objekt sine geometri-representasjoner kan også havne i ulike 
+        tabeller: Vi kan ikke blande f.eks. 2D og 3D, eller punkt, linje
+        og flate i samme Qgis tabell (jeg har iallfall ikke funnet 
+        ut hvordan). 
 
 	""" 
     
@@ -188,29 +270,33 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype='beste',
     gt = geometritype
         
     # Sjekker input data    
-    gtyper = [ 'flate', 'linje', 'punkt', 'vegnett', 'alle' ]
+    gtyper = [ 'flate', 'linje', 'punkt', 'vegnett', 'alle', 'beste' ]
     if gt and isinstance(gt, str ) and gt.lower() not in gtyper: 
         print( 'nvdb2kart: Ukjent geometritype angitt:', gt, 
             'skal være en av:', gtyper) 
-        print( 'nvdb2kart: Setter geometritype=vegnett') 
-        gt = 'vegnett'
-        
-    
-    # Bruker datakatalog-navnet om ikke annet er angitt: 
-    if not lagnavn: 
-        lagnavn = sokeobjekt.objektTypeDef['navn']
+        print( 'nvdb2kart: Setter geometritype=beste') 
+        gt = 'beste'
 	
     if isinstance( sokeobjekt, nvdbFagdata): 
+
+
+        # Bruker datakatalog-navnet om ikke annet er angitt: 
+        if not lagnavn: 
+            lagnavn = sokeobjekt.objektTypeDef['navn']
 
 		# Datakatalogdiefinisjon ihtt Qgis-terminologi 
         (egIds, qgisEg, qgisDakat ) = lagQgisDakat(sokeobjekt)
         
-        punktlag = memlayerwrap( 'Point',           qgisDakat, str(lagnavn))
+        punktlag = memlayerwrap( 'Pointz',           qgisDakat, str(lagnavn))
+        punktlag2d = memlayerwrap( 'Point',           qgisDakat, str(lagnavn) +'_2d')
         multipunktlag = memlayerwrap( 'MultiPoint',           qgisDakat, str(lagnavn) + '_multi' )
-        linjelag = memlayerwrap( 'Linestring', qgisDakat, str(lagnavn)) 
-        multilinjelag = memlayerwrap( 'MultiLinestring', qgisDakat, str(lagnavn) + '_multi' ) 
+        linjelag2d = memlayerwrap( 'Linestring', qgisDakat, str(lagnavn)+'_2d') 
+        linjelag = memlayerwrap( 'Linestringz', qgisDakat, str(lagnavn)) 
+        multilinjelag2d = memlayerwrap( 'MultiLinestring', qgisDakat, str(lagnavn) + '_multiline2d' ) 
+        multilinjelag = memlayerwrap( 'MultiLinestringz', qgisDakat, str(lagnavn) + '_multiline' ) 
         flatelag = memlayerwrap( 'Polygon',         qgisDakat, str(lagnavn))         
-        multiflatelag = memlayerwrap( 'MultiPolygon',         qgisDakat, str(lagnavn) + '_multi') 
+        flatelag3d = memlayerwrap( 'Polygonz',         qgisDakat, str(lagnavn) + '_3d' )         
+        multiflatelag = memlayerwrap( 'MultiPolygon',         qgisDakat, str(lagnavn) + '_multiPoly') 
         collectionlag = memlayerwrap( 'GeometryCollection',         qgisDakat, str(lagnavn) + '_geomcollection') 
 	
         mittobj = sokeobjekt.nesteNvdbFagObjekt()
@@ -224,82 +310,255 @@ def nvdb2kart( sokeobjekt, lagnavn=None, geometritype='beste',
             # Qgis attributter = utvalgte metadata + egenskapverdier etter datakatalogen 
             egenskaper = nvdbFeat2qgisProperties( mittobj, egIds ) 
             
+            # Vi kan ha flere geometrivisninger samtidig. 
+            # Løkke for å løpe gjennom dem. 
+            # Brukes også for å få med alle individuelle vegsegmenter. 
+            mygeoms = []
+
             # Flagg for å holde styr på hvordan det går med forsøk på å vise 
-            # egengeometri
-            beste_gt_suksess = False 
+            # finne alle ønskede geometrivarianter
+            beste_gt_suksess = False
 
-                            
+            flategeom = mittobj.egenskapverdi( 'Geometri, flate')
+            linjegeom = mittobj.egenskapverdi( 'Geometri, linje')
+            punktgeom = mittobj.egenskapverdi( 'Geometri, punkt')
+            
+            
+            #        mygeom = QgsGeometry.fromWkt( wktgeometri )
+#        print("Input geometry", egenskaper[0], wktgeometri )
+#        print("\t", "=>", mygeom.asWkt() )
+
+            
+            
             if gt in [ 'alle', 'flate', 'beste' ]: 
-                pass
+                if flategeom: 
+                    mygeoms.append( QgsGeometry.fromWkt(flategeom)) 
+                    beste_gt_suksess = True
                 
-                
-                # beste_gt_suksess = True
-            elif gt in [ 'alle', 'linje' ] or (gt == 'beste' and not beste_gt_suksess): 
-                pass 
-                
-                # beste_gt_suksess = True
-            elif gt in ['alle', 'punkt' ] or (gt == 'beste' and not beste_gt_suksess): 
-                pass
+            if (gt == 'alle') or (gt == 'linje') or \
+                        (gt ==  'beste' and not beste_gt_suksess): 
+                if linjegeom: 
+                    mygeoms.append(QgsGeometry.fromWkt(linjegeom)) 
+                    beste_gt_suksess = True 
 
-                # beste_gt_suksess = True                
-            elif (gt== 'vegnett') or (inkludervegnett == 'alltid') or \
-                            (gt == 'beste' and not beste_gt_suksess):
-                pass                 
-            
-            else:
-                # TODO Debug logikken, hva har vi glemt?  
-                print( 'DEBUG! Viser ikke geometri for', mittobj.id, 'burde vi det?')
-                print( 'Valgt geometritype=', gt) 
-                print( 'Inkluder vegnett? =', inkludervegnett) 
-            
-            if not geometritype: 
+            if (gt == 'alle') or (gt == 'punkt') or \
+                        (gt == 'beste' and not beste_gt_suksess): 
+                if punktgeom: 
+                    mygeoms.append( QgsGeometry.fromWkt(punktgeom)) 
+                    beste_gt_suksess = True
+                             
+            # Skal vi vise vegnettsgeometri? Itererer i så fall 
+            # over alle vegnett-geometrier 
+            if (gt == 'vegnett') or \
+                    (inkludervegnett == 'alltid') or \
+                    (gt == 'beste' and not beste_gt_suksess and \
+                                        inkludervegnett != 'aldri'):  
                 
-                if mittobj.egenskapverdi( 'Geometri, flate')    and 'POLYGON' in mittobj.egenskapverdi( 'Geometri, flate'):
-                    geometritype = 'flate'
-                elif  mittobj.egenskapverdi( 'Geometri, linje') and 'LINESTRING' in mittobj.egenskapverdi( 'Geometri, linje'):
-                    geometritype = 'linje'
-                elif mittobj.egenskapverdi( 'Geometri, punkt')  and 'POINT' in mittobj.egenskapverdi( 'Geometri, punkt'): 
-                    geometritype = 'punkt'
+                for segment in mittobj.vegsegmenter: 
+                    mygeoms.append( QgsGeometry.fromWkt(
+                                        segment['geometri']['wkt'] ))
+
+           # Advarsel 
+            if len( mygeoms ) == 0:
+               print( 'Fant ingen geometri nvdbId', mittobj.id, 
+               'geometritype=', gt, 'inkludervegnett=', inkludervegnett) 
+ 
+            # Legger alle geometri-representasjonene i Qgis kart
+            for mygeom in mygeoms:                             
+            
+                mywkt = mygeom.asWkt().lower()
+                if 'pointz' in mywkt: 
+                    punktlag.addFeature( egenskaper, mygeom )
+                elif 'point' in mywkt: 
+                    punktlag2d.addFeature( egenskaper, mygeom )
+                elif 'multipoint' in mywkt: 
+                    multipunktlag.addFeature( egenskaper, mygeom)            
+                elif 'linestringz' in mywkt: 
+                    linjelag.addFeature( egenskaper, mygeom)
+                elif 'linestring' in mywkt: 
+                    linjelag2d.addFeature( egenskaper, mygeom)
+                elif 'multilinestringz' in mywkt: 
+                    multilinjelag.addFeature( egenskaper, mygeom)            
+                elif 'multilinestring' in mywkt: 
+                    multilinjelag2d.addFeature( egenskaper, mygeom)            
+                elif 'polygonz' in mywkt:
+                    flatelag3d.addFeature( egenskaper, mygeom) 
+                elif 'polygon' in mywkt:
+                    flatelag.addFeature( egenskaper, mygeom) 
+                elif 'multipolygon' in mywkt:
+                    multiflatelag.addFeature( egenskaper, mygeom) 
+                elif 'featurecollection' in mywkt:
+                    collectionlag.addFeature( egenskaper, mygeom) 
                 else:
-                    geometritype = 'vegnett' or (inkludervegnett == 'alltid') or ( ) 
-
-                                        
-            mygeom = mittobj.egenskapverdi( 'Geometri, ' + geometritype ) 
-#             print( 'debug', mittobj.id, geometritype, mygeom) 
-            
-            
-            # Bruker vegnett hvis angitt, eller hvis vi ikke fant 
-            # den egengeometrivarianten vi helst vil ha
-            if geometritype.lower() != 'vegnett' and mygeom:
-                pass
-#                print( 'debug', mittobj.id, 'bruker denna egengeometrien:', mygeom, geometritype )
-
-            else:
-                mygeom = mittobj.wkt() 
-#               print( 'debug', mittobj.id, ': Bruker vegnettgeom', mygeom )
-                # TODO må lage funksjon som itererer over vegnett-segmenter! 
-                # Enten lager ett objekt per vegsegment, eller setter dem sammen til multiline-string... 
-            
-            if 'point' in mygeom[0:7].lower(): 
-                punktlag.addFeature( egenskaper, mygeom )
-            elif 'line' in mygeom[0:7].lower(): 
-                linjelag.addFeature( egenskaper, mygeom)
-            elif 'polygon' in mygeom[0:10]().lower():
-                flatelag.addFeature( egenskaper, mygeom) 
-            else:
-                print( debug, mittobj.id, 'Ukjent geometritype:', feat.geometry())
+                    print( mittobj.id, 'Ukjent geometritype:', mywkt)
+                
     
             mittobj = sokeobjekt.nesteNvdbFagObjekt()
             # Slutt while-løkke 
 
         punktlag.ferdig()
+        punktlag2d.ferdig()
         linjelag.ferdig()
+        linjelag2d.ferdig()
         flatelag.ferdig()     
+        flatelag3d.ferdig()     
         multipunktlag.ferdig()
+        multilinjelag2d.ferdig()
         multilinjelag.ferdig()
         multiflatelag.ferdig()
+        multilinjelag2d
         collectionlag.ferdig()
 
-        
-        return punktlag, linjelag, flatelag   
-        
+    ##################################################
+    ### 
+    ### NVDB Veglenkers
+    ####
+    elif isinstance( sokeobjekt, nvdbVegnett): 
+
+        # Kaller kartlaget vegnett om ikke annet er angitt: 
+        if not lagnavn: 
+            lagnavn = 'Vegnett'
+      
+
+        # Egenskaper for vegnett
+        egNavnDef = [   { "veglenkeid" : 'int'},
+                        { "startdato" : 'date' },
+                        { "kortform_veglenke": "string" },
+                        { "startposisjon" : 'double' },
+                        { "sluttposisjon" : 'double' },
+                        { "strekningslengde": "int" },
+                        { "typeVeg": "string" },
+                        { "topologinivå" : 'int'},
+                        { "topologinivå_tekst": "string"},
+                        { "felt": "string" },
+                        { "medium": "string" },
+                        { "temakode": 7012 },
+                        { "konnekteringslenke": "string" },
+                        { "region": "int"},
+                        { "fylke": "int" },
+                        { "vegavdeling": "int" },
+                        { "kommune": "int" },
+                    ]
+
+        vegRefDef = [   { "532fylke": "int" },
+                        { "532kommune": "int" },
+                        { "kategori": "string" },
+                        { "status": "string" },
+                        { "nummer": "int" },
+                        { "hp": "int" },
+                        { "fra_meter": "int" },
+                        { "til_meter": "int" },
+                        { "vegrefkort": "string" }
+                    ]
+ 
+        geomKvalDef = [ { "metode": "int" },
+                        {  "nøyaktighet": "int"},
+                        {  "høydenøyaktighet": "int"},
+                        {  "toleranse": "int"},
+                        {  "synlighet": "int" },
+                        {  "datafangstdato": "date" } 
+                    ] 
+         
+        # Konstruerer Qgis egenskapsdefinisjon 
+        vegnettEgenskaper = ''
+        for egliste in [ egNavnDef, vegRefDef, geomKvalDef ]: 
+            for egenskap in egliste: 
+                myKey = list(egenskap.keys())[0]
+                vegnettEgenskaper +=  '&field=' +                     \
+                                        myKey +  ':' + str(egenskap[myKey])
+
+        # Fjerner den første ampersanden 
+        vegnettEgenskaper = vegnettEgenskaper[1:]
+   
+        # Lager arbeidslag 
+        punktlag = memlayerwrap( 'Pointz',           
+                            vegnettEgenskaper, str(lagnavn)+'_punkt')
+        linjelag = memlayerwrap( 'Linestringz', 
+                                        vegnettEgenskaper, str(lagnavn)) 
+        linjelag2d = memlayerwrap( 'Linestring', 
+                                vegnettEgenskaper, str(lagnavn) + '2d' ) 
+        multilinjelag = memlayerwrap( 'MultiLinestringz', 
+                            vegnettEgenskaper, str(lagnavn) + '_multi' ) 
+        multilinjelag2d = memlayerwrap( 'MultiLinestring', 
+                          vegnettEgenskaper, str(lagnavn) + '_multi2d' ) 
+        collectionlag = memlayerwrap( 'GeometryCollection',   
+                    vegnettEgenskaper, str(lagnavn) + '_geomcollection') 
+
+        mittobj = sokeobjekt.nesteForekomst()
+        count = 0 
+        while mittobj: 
+            count += 1
+            if count % 500 == 0 or count in [1, 10, 20, 50, 100]: 
+                print( 'Lagt til ', count,  
+                            'veglenker i kartlag', lagnavn) 
+
+            nycount = 0 
+            # Legger til egenskapverdier fra den første listen: 
+            egVerdier = []
+            for egenskap in egNavnDef:
+                egNavn = list( egenskap.keys())[0]
+                if egNavn == 'kortform_veglenke': 
+                    egVerdier.append( mittobj['kortform'] )
+                elif egNavn == "startdato":
+                    egVerdier.append( mittobj['metadata']['startdato'] )
+                elif egNavn in mittobj.keys(): 
+                    egVerdier.append( mittobj[egNavn]) 
+                else: 
+                    egVerdier.append( None ) 
+                                        
+            # Legger til egenskapverdier fra vegreferanse-listen
+            for egenskap in vegRefDef: 
+                egNavn = list( egenskap.keys())[0]
+                if egNavn == 'vegrefkort': 
+                    egVerdier.append( mittobj['vegreferanse']['kortform']) 
+                elif egNavn == "532fylke":
+                    egVerdier.append( mittobj['vegreferanse']['fylke'] )
+                elif egNavn == "532kommune":
+                    egVerdier.append( mittobj['vegreferanse']['kommune'] ) 
+                elif egNavn in mittobj['vegreferanse'].keys(): 
+                    egVerdier.append( mittobj['vegreferanse'][egNavn]) 
+                else: 
+                    egVerdier.append( None ) 
+
+            # Legger til egenskapverdier fra geometrikvalitet-listen
+            for egenskap in geomKvalDef: 
+                egNavn = list( egenskap.keys())[0]
+                if egNavn in mittobj['geometri']['kvalitet'].keys(): 
+                    egVerdier.append( mittobj['geometri']['kvalitet'][egNavn]) 
+                else: 
+                    egVerdier.append( None ) 
+
+            # Geometri
+            mygeom = QgsGeometry.fromWkt( mittobj['geometri']['wkt'])
+            mywkt = mygeom.asWkt().lower()
+            
+            if 'pointz' in mywkt: 
+                punktlag.addFeature( egVerdier, mygeom )
+            elif 'linestringz' in mywkt: 
+                linjelag.addFeature( egVerdier, mygeom)
+            elif 'linestring' in mywkt: 
+                linjelag2d.addFeature( egVerdier, mygeom)
+            elif 'multilinestringz' in mywkt: 
+                multilinjelag.addFeature( egVerdier, mygeom)            
+            elif 'multilinestring' in mywkt: 
+                multilinjelag2d.addFeature( egVerdier, mygeom)            
+            elif 'featurecollection' in mywkt:
+                collectionlag.addFeature( egVerdier, mygeom) 
+            else:
+                print( mittobj['kortform'], 'Ukjent geometritype:', mywkt)
+
+            # Ferdig med ett veglenke-objekt, klart for det neste
+            # Ferdig med ett veglenke-objekt, klart for det neste
+            mittobj = sokeobjekt.nesteForekomst()
+#            if count > 3: 
+#                mittobj = False
+#                print( "Debug, feiger ut etter 50 veglenker") 
+                
+        punktlag.ferdig()
+        linjelag.ferdig()
+        linjelag2d.ferdig()
+        multilinjelag.ferdig()
+        multilinjelag2d.ferdig()
+        collectionlag.ferdig()
+
+
