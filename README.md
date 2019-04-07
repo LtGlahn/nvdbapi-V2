@@ -1,4 +1,4 @@
-# Jobb interaktivt mot NVDB api V2 
+ # Jobb interaktivt mot NVDB api V2 
 
 Jobb interaktivt og objektorientert mot NVDB api V2! 
 
@@ -16,13 +16,25 @@ og kan også nå ut til brukerne ved problemer. Denne informasjonen lese fra fil
 
 Hovedrutinen *nvdbapi.py* skal fungere både med python 2 og 3. Et par av eksemplene er skrevet i python 3, men det aller meste er bakoverkompatibelt med python 2 (dog med litt mindre god håndtering av UTF-8, dvs norske tegn). 
 
+# Prinsipper 
+
+1. Et _*søkeobjekt*_ håndterer all mikk-makk rundt spørringer mot NVDB api, paginering etc. 
+1. Vi har to typer søkeobjekter
+    * nvdbVegnett - henter veglenker
+    * nvdbFagdata - henter en av de 400 fagdatatypene vi har definert i [NVDB datakatalog](https://datakatalogen.vegdata.no/)
+2. Søkeobjektene har funksjoner for å avgrense søk, og hente ut alle data som tilfredssstiller søket. 
+3. Noen funksjoner _(f.eks. nvdb2geojson)_ tar et slik søkeobjekt og transformerer til andre datastrukturer, tabulære data m.m.
+4. Fra søkeobjektet kan du iterere over alle NVDB-objekter som tilfredsstiller søket ditt: 
+    1. Enten som JSON-objekt [rett fra NVDB api](https://api.vegdata.no/endepunkt/vegobjekter.html "Vegobjekter i NVDB api")
+    2. Eller som et _*nvdbFagObjekt*_, som har en del fiffige funksjoner for å hente ut egenskapverdier m.m. 
+
 ## nvdbVegnett 
 
-Klasse for å hente veglenker fra NVDB api. 
+Søkeobjekt for å hente veglenker fra NVDB api. 
 
 ## nvdbFagdata(objektTypeId) 
 
-Klasse for å hente fagdata (ikke vegnett, men øvrige data om vegen). Totalt har vi definert ca 385 ulike objekttyper
+Søkeobjekt for å hente fagdata (ikke vegnett, men øvrige data om vegen). Totalt har vi definert ca 385 ulike objekttyper
 i [datakatalogen](https://www.vegvesen.no/nvdb/apidokumentasjon/#/get/vegobjekttyper). 
 
 nvdbFagdata utvider klassen nvdbVegnett, og arver metoder og egenskaper fra denne. 
