@@ -165,7 +165,7 @@ def nvdb2kart( nvdbref, iface, kunfagdata=True, kunvegnett=False,
         
     elif isinstance( nvdbref, int): 
         
-        fag = finnid( nvdbref, kunfdagdata=kunfagdata, 
+        fag = finnid( nvdbref, kunfagdata=kunfagdata, 
             kunvegnett=kunvegnett, miljo=miljo)  
         
         if fag: 
@@ -177,7 +177,7 @@ def nvdb2kart( nvdbref, iface, kunfagdata=True, kunvegnett=False,
                 if not lagnavn: 
                     lagnavn = str(fag['metadata']['type']['id']) + \
                                 '_' + str( nvdbref) 
-                 
+            
             elif isinstance( fag, list) and len(fag) > 0 and \
             isinstance( fag[0], dict) and 'veglenkeid' in fag[0].keys():
                 
@@ -191,9 +191,7 @@ def nvdb2kart( nvdbref, iface, kunfagdata=True, kunvegnett=False,
                 print( "fant ingen data???", str(nvdbref) )
                 return
             
-            sokeobj.paginering['antall'] = 1
-            sokeobj.paginering['meredata'] = False
-            sokeobj.paginering['initielt'] = False                
+            sokeobj.paginering['dummy'] = True
             sokeobj.paginering['hvilken'] = 0
             
             # Sender til kartet

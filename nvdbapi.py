@@ -57,7 +57,8 @@ class nvdbVegnett:
                                                         # array self.data['objekter'] 
                                                         # 
                                 'meredata'      : True, # Gjetning på om vi kan hente mere data
-                                'initielt'      : True # Initiell ladning av datasett
+                                'initielt'      : True,  # Initiell ladning av datasett
+                                'dummy'         : False # Jukse-bruk av paginering 
                     } 
         
         # Standardverdier for responsen, og holder evt tilleggsparametre
@@ -152,7 +153,16 @@ class nvdbVegnett:
         antObjLokalt = len(self.data['objekter'])
         if debug: 
             print( "Paginering?", self.paginering) 
-        if self.paginering['initielt']: 
+            
+        if self.paginering['dummy']:
+            # Noen har faket et søkeobjekt og dytta inn data der...
+            if self.paginering['hvilken'] < len( self.data['objekter']): 
+                self.paginering['hvilken'] += 1
+                return self.data['objekter'][self.paginering['hvilken']-1]
+            else: 
+                return None
+             
+        elif self.paginering['initielt']: 
         
             if isinstance( self, nvdbFagdata): 
                 parametre = merge_dicts(    self.geofilter, 
@@ -344,7 +354,7 @@ class nvdbVegnett:
                 print("Lovlige valg: utv, test eller prod")
         
         # if not silent: 
-        print( "Bruker ", self.apiurl)
+        # print( "Bruker ", self.apiurl)
      
             
 class nvdbFagdata(nvdbVegnett): 
@@ -396,7 +406,8 @@ class nvdbFagdata(nvdbVegnett):
                                                     # array self.data['objekter'] 
                                                     # 
                             'meredata'      : True, # Gjetning på om vi kan hente mere data
-                            'initielt'      : True # Initiell ladning av datasett
+                            'initielt'      : True, # Initiell ladning av datasett
+                            'dummy'         : False # For jukse-bruk av søkeobjektet
                 } 
     
         self.data = { 'objekter' : []}
@@ -763,7 +774,7 @@ def finnid(objektid, kunvegnett=False, kunfagdata=False, miljo=False):
     # Dummy objekt for å gjenbruke anrops-funksjonene
     b = nvdbFagdata(45)
     if miljo:
-        b.miljo( miljo, silent=True)
+        b.miljo( miljo)
     res = None
 
     # Henter fagdata    
