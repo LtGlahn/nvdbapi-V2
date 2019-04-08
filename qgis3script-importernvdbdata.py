@@ -38,8 +38,8 @@ import sys
 
 # Endre stien til dit du har lastet ned biblioteket
 # https://github.com/LtGlahn/nvdbapi-V2 
-# nvdblibrary = 'C:/Data/test/github/nvdbapi-py'
-nvdblibrary = '/home/jan/Documents/jobb/nvdbapi-V2-test'
+nvdblibrary = 'C:/Data/test/github/nvdbapi-V2'
+# nvdblibrary = '/home/jan/Documents/jobb/nvdbapi-V2-test'
 
 if not [ k for k in sys.path if 'nvdbapi-V2' in k]: 
     print( 'Føyer', nvdblibrary, 'til søkestien') 
