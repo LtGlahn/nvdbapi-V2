@@ -204,16 +204,16 @@ def nvdb2kart( nvdbref, iface, kunfagdata=True, kunvegnett=False,
 
 
 def nvdbsok2qgis( sokeobjekt, lagnavn=None, 
-            geometritype='beste', inkludervegnett='beste'): 
+            geometritype='beste', inkludervegnett='beste', debug=False): 
     """
     Første spede begynnelse på nvdb2qgis. 
-	
-	Vil ta et søkeobjekt fra  nvdbapi-v2 biblioteket (nvdbFagdata eller 
+    
+    Vil ta et søkeobjekt fra  nvdbapi-v2 biblioteket (nvdbFagdata eller 
     nvdbVegnett) og hente tilhørende data fra NVDB-api V2. 
-	
-	UMODENT: TODO
-		- B
-	
+    
+    UMODENT: TODO
+        - B
+    
     Arguments: 
         sokeobjekt: Søkeobjekt fra nvdbapi.nvdbVegnett eller
                                                     nvdbapi.nvdbFagdata
@@ -262,11 +262,15 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
         og flate i samme Qgis tabell (jeg har iallfall ikke funnet 
         ut hvordan). 
 
-	""" 
+    """ 
     
     # Kortform geometritype 
     gt = geometritype
-        
+    
+    print("hallo")
+    if debug: 
+        print( "Her skal det debugges, ja")
+    
     # Sjekker input data    
     gtyper = [ 'flate', 'linje', 'punkt', 'vegnett', 'alle', 'beste' ]
     if gt and isinstance(gt, str ) and gt.lower() not in gtyper: 
@@ -274,15 +278,17 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
             'skal være en av:', gtyper) 
         print( 'nvdb2kart: Setter geometritype=beste') 
         gt = 'beste'
-	
+    
     if isinstance( sokeobjekt, nvdbFagdata): 
-
+        
+        if debug: 
+            print( 'nvdbFagdata, geometritype=', gt) 
 
         # Bruker datakatalog-navnet om ikke annet er angitt: 
         if not lagnavn: 
             lagnavn = sokeobjekt.objektTypeDef['navn']
 
-		# Datakatalogdiefinisjon ihtt Qgis-terminologi 
+        # Datakatalogdiefinisjon ihtt Qgis-terminologi 
         (egIds, qgisEg, qgisDakat ) = lagQgisDakat(sokeobjekt)
         
         punktlag = memlayerwrap( 'Pointz',           qgisDakat, str(lagnavn))
@@ -296,7 +302,7 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
         flatelag3d = memlayerwrap( 'Polygonz',         qgisDakat, str(lagnavn) + '_3d' )         
         multiflatelag = memlayerwrap( 'MultiPolygon',         qgisDakat, str(lagnavn) + '_multiPoly') 
         collectionlag = memlayerwrap( 'GeometryCollection',         qgisDakat, str(lagnavn) + '_geomcollection') 
-	
+    
         mittobj = sokeobjekt.nesteNvdbFagObjekt()
         count = 0 
         while mittobj: 
@@ -316,22 +322,35 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
             # Flagg for å holde styr på hvordan det går med forsøk på å vise 
             # finne alle ønskede geometrivarianter
             beste_gt_suksess = False
+            
+            # Finner navn på geometri-egenskap. Gode gamle "Geometri, Flate" er ikke
+            # enerådende og skuddsikker lenger... f.eks. har 943 "Geometri_flate" 
+            flatenavn = 'Geometri, flate'
+            linjenavn = 'Geometri, linje' 
+            punktnavn = 'Geometri, punkt'
+            
+            for eg in mittobj.egenskaper: 
+                if 'geometri' in eg['navn'].lower() and 'flate' in eg['navn'].lower():
+                    flatenavn = eg['navn']
+                if 'geometri' in eg['navn'].lower() and 'linje' in eg['navn'].lower():
+                    linjenavn = eg['navn']
+                if 'geometri' in eg['navn'].lower() and 'punkt' in eg['navn'].lower():
+                    punktnavn = eg['navn']
 
-            flategeom = mittobj.egenskapverdi( 'Geometri, flate')
-            linjegeom = mittobj.egenskapverdi( 'Geometri, linje')
-            punktgeom = mittobj.egenskapverdi( 'Geometri, punkt')
-            
-            
-            #        mygeom = QgsGeometry.fromWkt( wktgeometri )
-#        print("Input geometry", egenskaper[0], wktgeometri )
-#        print("\t", "=>", mygeom.asWkt() )
 
+            flategeom = mittobj.egenskapverdi( flatenavn)
+            linjegeom = mittobj.egenskapverdi( linjenavn)
+            punktgeom = mittobj.egenskapverdi( punktnavn)
             
-            
+                          
             if gt in [ 'alle', 'flate', 'beste' ]: 
                 if flategeom: 
                     mygeoms.append( QgsGeometry.fromWkt(flategeom)) 
                     beste_gt_suksess = True
+
+                if debug:
+                    print( mittobj.id, "punkt", "\n\t", punktgeom, 
+                            "\n\t", mygeoms[-1].asWkt()[0:100])
                 
             if (gt == 'alle') or (gt == 'linje') or \
                         (gt ==  'beste' and not beste_gt_suksess): 
@@ -339,12 +358,21 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
                     mygeoms.append(QgsGeometry.fromWkt(linjegeom)) 
                     beste_gt_suksess = True 
 
+                if debug:
+                    print( mittobj.id, "linje", "\n\t", punktgeom, 
+                            "\n\t", mygeoms[-1].asWkt()[0:100])
+
+
             if (gt == 'alle') or (gt == 'punkt') or \
                         (gt == 'beste' and not beste_gt_suksess): 
                 if punktgeom: 
                     mygeoms.append( QgsGeometry.fromWkt(punktgeom)) 
                     beste_gt_suksess = True
-                             
+            
+                if debug:
+                    print( mittobj.id, "punkt", "\n\t", punktgeom, 
+                            "\n\t", mygeoms[-1].asWkt()[0:100])
+            
             # Skal vi vise vegnettsgeometri? Itererer i så fall 
             # over alle vegnett-geometrier 
             if (gt == 'vegnett') or \
@@ -352,6 +380,8 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
                     (gt == 'beste' and not beste_gt_suksess and \
                                         inkludervegnett != 'aldri'):  
                 
+                if debug: 
+                    print( mittobj.id, "Henter vegnettsgeometri") 
                 for segment in mittobj.vegsegmenter: 
                     mygeoms.append( QgsGeometry.fromWkt(
                                         segment['geometri']['wkt'] ))
@@ -390,10 +420,11 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
                 else:
                     print( mittobj.id, 'Ukjent geometritype:', mywkt)
                 
-    
+            # Slutt while-løkke. Ferdig med ett objekt, henter det neste 
             mittobj = sokeobjekt.nesteNvdbFagObjekt()
-            # Slutt while-løkke 
 
+
+        # Tomme lag forsvinner, resten havner i Qgis kartlagsliste og kart
         punktlag.ferdig()
         punktlag2d.ferdig()
         linjelag.ferdig()
@@ -546,12 +577,9 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
                 print( mittobj['kortform'], 'Ukjent geometritype:', mywkt)
 
             # Ferdig med ett veglenke-objekt, klart for det neste
-            # Ferdig med ett veglenke-objekt, klart for det neste
             mittobj = sokeobjekt.nesteForekomst()
-#            if count > 3: 
-#                mittobj = False
-#                print( "Debug, feiger ut etter 50 veglenker") 
-                
+
+        # Tomme lag forsvinner, resten havner i Qgis kartlagsliste og kart
         punktlag.ferdig()
         linjelag.ferdig()
         linjelag2d.ferdig()
