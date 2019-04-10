@@ -267,7 +267,6 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
     # Kortform geometritype 
     gt = geometritype
     
-    print("hallo")
     if debug: 
         print( "Her skal det debugges, ja")
     
@@ -394,28 +393,33 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
             # Legger alle geometri-representasjonene i Qgis kart
             for mygeom in mygeoms:                             
             
-                mywkt = mygeom.asWkt().lower()
-                if 'pointz' in mywkt: 
+                allwkt = mygeom.asWkt().lower()
+                mylist = allwkt.split()
+                mywkt = mylist[0]
+                if debug: 
+                    print( "WKT med små bokstaver:",  mywkt) 
+
+                if 'pointz' == mywkt: 
                     punktlag.addFeature( egenskaper, mygeom )
-                elif 'point' in mywkt: 
+                elif 'point' == mywkt: 
                     punktlag2d.addFeature( egenskaper, mygeom )
-                elif 'multipoint' in mywkt: 
+                elif 'multipoint' == mywkt: 
                     multipunktlag.addFeature( egenskaper, mygeom)            
-                elif 'linestringz' in mywkt: 
+                elif 'linestringz' == mywkt: 
                     linjelag.addFeature( egenskaper, mygeom)
-                elif 'linestring' in mywkt: 
+                elif 'linestring' == mywkt: 
                     linjelag2d.addFeature( egenskaper, mygeom)
-                elif 'multilinestringz' in mywkt: 
+                elif 'multilinestringz' == mywkt: 
                     multilinjelag.addFeature( egenskaper, mygeom)            
-                elif 'multilinestring' in mywkt: 
+                elif 'multilinestring' == mywkt: 
                     multilinjelag2d.addFeature( egenskaper, mygeom)            
-                elif 'polygonz' in mywkt:
+                elif 'polygonz' == mywkt:
                     flatelag3d.addFeature( egenskaper, mygeom) 
-                elif 'polygon' in mywkt:
+                elif 'polygon' == mywkt:
                     flatelag.addFeature( egenskaper, mygeom) 
-                elif 'multipolygon' in mywkt:
+                elif 'multipolygon' == mywkt:
                     multiflatelag.addFeature( egenskaper, mygeom) 
-                elif 'featurecollection' in mywkt:
+                elif 'featurecollection' == mywkt:
                     collectionlag.addFeature( egenskaper, mygeom) 
                 else:
                     print( mittobj.id, 'Ukjent geometritype:', mywkt)
