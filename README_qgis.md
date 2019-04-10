@@ -7,6 +7,7 @@ NVDB data til QGIS med Python-konsollet. Søk, filtrering og nedlasting gjøres 
 
 ### Eksempel - bomstasjoner i Oslo til Qgis 3
 Innlesning til Qgis 3 gjøres med kommandoen 
+
 ```
 sokeobj = nvdbFagdata(45) 
 sokeobj.addfilter_geo( {'kommune' : 301 }) # Oslo kommune 
@@ -34,9 +35,7 @@ nvdb2kart( 85751392, iface)
   4. Åpne script. Naviger til filene du pakket ut i steg 1, og åpne fila: 
     * Qgis 3: **qgis3script-importernvdbdata.py**
 	* _Qgis 2: qgisscript-importernvdbdata.py_
-  5. Rediger søkestien i skriptet! 
-    * Variabelen nvdblibrary må ha korrekt sti til mappen der du lagret kildekoden i steg 1. 
-	* Lagre **Pro-tip:** _Lagre scriptet med et annet navn, eller i en annen mappe. Da kan du laste ned oppdateringer av nvdbapi-V2 uten å miste dine lokale innstillinger._ 
+  5. Rediger søkestien i skriptet! Variabelen `nvdblibrary` må ha korrekt sti til mappen der du lagret kildekoden i steg 1. Lagre **Pro-tip:** _Lagre scriptet med et annet navn, eller i en annen mappe. Da kan du laste ned oppdateringer av nvdbapi-V2 uten å miste dine lokale innstillinger._ 
   6. Trykk den grønne "Kjør" - knappen
   7. Nå er du klar til å jobbe interaktivt i python-konsollet!
   
@@ -70,7 +69,7 @@ Naviger til filene du pakket ut i steg 1, og åpne fila:
 
 ##### 5. Rediger søkestien
 
-Variabelen nvdblibrary må ha korrekt sti til mappen der du lagret kildekoden i steg 1.
+Variabelen nvdblibrary må ha korrekt sti til mappen der du lagret kildekoden i steg 1.  **Pro-tip:** _Lagre scriptet med et annet navn, eller i en annen mappe. Da kan du laste ned oppdateringer av nvdbapi-V2 uten å miste dine lokale innstillinger._ 
 
 ![Rediger søkesti](./pic/qgis3_rediger_sti.png)
 
