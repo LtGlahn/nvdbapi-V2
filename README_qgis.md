@@ -17,7 +17,7 @@ Hvis man vil avgrense søket til kartflaten så bruker man i stedet
 ```
 nvdb2kart( sokeobj, iface) 
 ```
-iface er Qgis sin referanse til kartflaten, og må oppgis for at python-koden skal kunne finne kartflatens hjørnekoordinater. _(
+iface er Qgis sin referanse til kartflaten, og må oppgis for at python-koden skal kunne finne kartflatens hjørnekoordinater. 
 
 ### Eksempel - hent NVDB objekt med ID
 
@@ -36,7 +36,7 @@ nvdb2kart( 85751392, iface)
 	* _Qgis 2: qgisscript-importernvdbdata.py_
   5. Rediger søkestien i skriptet! 
     * Variabelen nvdblibrary må ha korrekt sti til mappen der du lagret kildekoden i steg 1. 
-	* Lagre **Pro-tip:** _Lagre scriptet med et annet navn, eller i en annen mappe. Da kan du laste ned oppdateringer av nvdbapi-V2 uten å miste dine lokale innstillinger. 
+	* Lagre **Pro-tip:** _Lagre scriptet med et annet navn, eller i en annen mappe. Da kan du laste ned oppdateringer av nvdbapi-V2 uten å miste dine lokale innstillinger._ 
   6. Trykk den grønne "Kjør" - knappen
   7. Nå er du klar til å jobbe interaktivt i python-konsollet!
   

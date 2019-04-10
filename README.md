@@ -262,16 +262,7 @@ v = nvdbapi.finnid(521218)   # Veglenke
 
 For fagdata returneres en DICT for angjeldende objekt. Denne kan gjøres om til et nvdbFagObjekt. 
 
-For vegnett returneres en liste med de veglenke-delene som inngår i denne veglenka. 
-
-# TO DO 
-======== 
-
- - [x] ~~Smart~~ håndtering av relasjoner. 
- - [x] Fiksa! ~~Litt snål oppførsel når du fyrer opp flere instanser av nvdbFagdata samtidig? Ser ut som om filtre og egenskapsverdier _"arves"_ fra den første instansen.~~  
- - [ ] Mere testing. 
- - [ ] Fikse på turistveg-eksemplet: Tynning av geometri + kun 2D koordinater. 
- 
+For vegnett returneres en liste med de veglenke-delene som inngår i denne veglenka.  
  
 EKSEMPLER 
 ======
