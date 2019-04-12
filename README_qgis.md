@@ -26,8 +26,73 @@ iface er Qgis sin referanse til kartflaten, og må oppgis for at python-koden sk
 nvdb2kart( 85751392, iface) 
 ```
 
-# Installasjon 
+### Eksempel - hent veglenke med ID
 
+```
+nvdb2kart( 498976, iface, kunvegnett=True)
+```
+
+
+## Et par tips
+
+Kommandoene og parametrene for qgis2 [les her](./qgisscript-importernvdbdata.py) og qgis3 (dette dokumentet) ligner, men er ikke identiske. 
+
+
+
+#### Hvordan blir jeg god på filtre? 
+
+Du leser dokumentasjon for nvdbFagObjekt i [nvdbapi-V2.py](./README.md) sammen med [dokumentasjon NVDB api](https://api.vegdata.no/) og [datakatalogen](https://datakatalogen.vegdata.no/).  Et par eksempler: 
+
+
+```
+# Bomstasjon
+sokeobjekt = nvdbFagdata(45) 
+
+# Dictionary med lokasjonsfiltre
+sokeobjekt.addfilter_geo( {'kommune' : 5001 })
+
+# Tekststreng med egenskapfiltre
+# Her wildkard-søk etter bomstasjoner med navn som begynner på "Nedre Leirfoss"
+sokeobjekt.addfilter_egenskap(b.addfilter_egenskap('1078="Nedre Leirfoss*"')) 
+``` 
+
+#### Hvilke filter er aktive, og hvordan nullstilles de?
+
+Her finner du alle filtre: 
+```
+sokeobjekt.allfilters()
+sokeobjekt.addfilter_geo()
+sokeobjekt.addfilter_egenskap()
+```
+Filtrene nullstilles ved å sende inn en tom streng
+```
+sokeobjekt.addfilter_geo('') 
+sokeobjekt.addfilter_egenskap('') 
+``` 
+
+
+#### Søkeobjektet påvirkes når du føyer det til QGIS
+
+Når du har kjørt kommandoene
+```
+sokeobjekt = nvdbFagdata(105) # Fartsgrense
+nvdb2kart(sokeobjekt, iface)  # Fartsgrense lagt til kartflaten
+```
+så påvirker det tilstanden til søkeobjektet på to måter: 
+
+  1. Paginering settes til tilstanden "har hentet alle objekter". 
+  2. Du har påført filteret ´kartutsnitt=\<utsnittet til din QGIS-kartflate\>' 
+
+Kommandoen nvdbsok2qgis påvirker paginering, men ikke geofilter. Pagineringstilstanden  kan du endre via kommandoen 
+```
+sokeobjekt.refresh()
+```
+
+Kartutsnittet vil bli oppdatert med nye verdier neste gang du kjører ´nvdb2kart´(sokeobjekt, iface)´. Men hvis du så bruker ´nvdbsok2qgis´ så vil resultatet fremdeles være avgrenset med det kartutsnittet du hadde sist gang du kjørte ´nvdb2kart´. 
+
+## Installasjon 
+
+  0. Lag et QGIS-prosjekt med CRS=25833. (UTM sone 33, som er det koordinatsystemet vi bruker). 
   1. Last ned kildekoden [https://github.com/LtGlahn/nvdbapi-V2](https://github.com/LtGlahn/nvdbapi-V2). 
     * Er du ukjent med Github så let etter den grønne knappen "Clone or download". Da kan du laste ned en zip-fil som du pakker ut lokalt på din maskin
   2.  I Qgis: Programtillegg -> Start Python konsoll
@@ -40,7 +105,11 @@ nvdb2kart( 85751392, iface)
   7. Nå er du klar til å jobbe interaktivt i python-konsollet!
   
   
-### Med bilder 
+## Installasjon med bilder 
+
+##### 0. Lag nytt QGIS-prosjekt med CRS=25833
+
+Dette finner du selv ut av... 
 
 ##### 1. Last ned kildekoden
 

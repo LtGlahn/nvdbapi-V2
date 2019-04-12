@@ -13,12 +13,10 @@ class memlayerwrap():
     
     Tanken er å ha en smidig håndtering av all den mangfoldighet av geometrityper du finner i NVDB. 
     Et NVDB-objekt kan være POINT, LINESTRING, MULTILINESTRING eller POLYGON (og kanskje litt mer). 
-    Og du vet ikke hva du får før du leser inn data.
+	Og data kan være en blanding av 2D og 3D koordinater. Og du vet aldri hva du får før du leser inn data.
     
-    Inntil videre oversetter vi alle koordinater til 2D.  
-    
-    Derfor oppretter vi en bunch med tomme lag, en per aktuell geometritype. Og disse føyes først til 
-    QGIS når det kommer et NVDB-objekt med aktuell geometritype
+    Derfor oppretter midlertidig en gjeng med tomme lag, en per aktuell geometritype og 2D/3D. 
+	Data føyes til riktig lag. Etterpå legger vi ikke-tomme lag til QGIS kartet. 
     """
     def __init__(self, geomtype, egenskapdef, navn) : 
         self.active = False
