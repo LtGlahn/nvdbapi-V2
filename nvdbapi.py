@@ -293,7 +293,7 @@ class nvdbVegnett:
 
     def update_http_header(self, filename='nvdbapi-clientinfo.json'): 
     
-        contactsfile = 'nvdbapi-clientinfo.json'
+        contactsfile = filename
         
         # Tricks for at qgis skal kunne finne klientinfo
         if 'nvdbapi-dir' in os.environ.keys():
@@ -301,21 +301,21 @@ class nvdbVegnett:
         
         # Http header info
         try: 
-            with open(filename) as data_file:    
+            with open(contactsfile) as data_file:    
                 contacts = json.load(data_file)
 
             if isinstance( contacts, dict): 
                 self.headers = merge_dicts( self.headers, contacts) 
 
                 if 'X-Client' not in contacts.keys(): 
-                    warn(' '.join(('No X-Client defined in ', filename )) ) 
+                    warn(' '.join(('No X-Client defined in ', contactsfile)) ) 
                     
                 if 'X-Kontaktperson' not in contacts.keys(): 
-                    warn(' '.join(('No X-Contact defined in ', filename)) ) 
+                    warn(' '.join(('No X-Contact defined in ', contactsfile)) ) 
 
             else: 
                 warn( 'X-Client and X-Contact not updated')
-                warn( ''.join(( 'Tror ikke ', filename, 
+                warn( ''.join(( 'Tror ikke ', contactsfile, 
                             ' har riktig struktur', '\nSe dokumentasjon')) )
                 
         except IOError:
