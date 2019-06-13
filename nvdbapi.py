@@ -443,6 +443,13 @@ class nvdbFagdata(nvdbVegnett):
         if self.objektTypeId: 
         
             parametre = self.allfilters() 
+            
+            # Fjerner parametre som ikke gir mening (men feilmelding) for statistikk-kall
+            forbud = [ 'antall', 'start', 'inkluder', 'geometritoleranse', 'projeksjon', 'dybde' ]
+            for nei in forbud: 
+                if nei in parametre.keys():
+                    junk = parametre.pop(nei) 
+            
             stat = self.anrope( '/'.join(('vegobjekter', str(self.objektTypeId), 
                             'statistikk')), parametre=parametre  )  
             self.antall = stat['antall'] 
