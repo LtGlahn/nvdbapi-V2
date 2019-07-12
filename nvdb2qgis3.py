@@ -115,8 +115,12 @@ def nvdbFeat2qgisProperties( mittobj, egIds):
     NVDB fagobjekt til en liste med QGIS verdier. 
     """ 
     qgisprops = [ mittobj.id, mittobj.metadata['versjon'], 
-                 mittobj.metadata['startdato'], 
-                 mittobj.metadata['sist_modifisert'] ]
+                 mittobj.metadata['startdato'] ] 
+                 
+    if 'sist_modifisert' in mittobj.metadata:
+        qgisprops.append( mittobj.metadata['sist_modifisert'] )
+    else: 
+        qgisprops.append( mittobj.metadata['startdato'] + 'T00:00:00' ) 
     
     for eg in egIds: 
         
