@@ -558,7 +558,8 @@ def nvdbsok2qgis( sokeobjekt, lagnavn=None,
             # Legger til egenskapverdier fra geometrikvalitet-listen
             for egenskap in geomKvalDef: 
                 egNavn = list( egenskap.keys())[0]
-                if egNavn in mittobj['geometri']['kvalitet'].keys(): 
+                if 'kvalitet' in mittobj['geometri'].keys() and \
+                            egNavn in mittobj['geometri']['kvalitet'].keys(): 
                     egVerdier.append( mittobj['geometri']['kvalitet'][egNavn]) 
                 else: 
                     egVerdier.append( None ) 
