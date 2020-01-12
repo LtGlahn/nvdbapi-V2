@@ -810,7 +810,6 @@ def finnid(objektid, kunvegnett=False, kunfagdata=False, miljo=False):
 
         
     return res
-    
             
 def merge_dicts(*dict_args):
     """
