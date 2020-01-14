@@ -617,6 +617,86 @@ class nvdbFagdata(nvdbVegnett):
         else: 
             return None
         
+    def to_records(self, vegsegmenter=True, relasjoner=False, geometri=False ): 
+        """
+        Eksporterer til en liste med dictionaries med struktur 
+        "objekttype" : INT,
+        "objektId" : INT, 
+        "versjon" : INT,
+        "metadata" : metadata-element (dictionary)
+        "egenskapnavn1" : verdi,
+        "egenskapnavn2" : geometri,
+            ...
+        "geometri" : "WELL KNOWN TEXT" 
+        "vref" : Kortform vegsystemreferanse. Hvis det er fler enn ett element blir dette en 
+                    kommaseparert liste.  
+        "vegsystemreferanser : [ liste med vegsystemreferanse-dictionary ]
+        "vegsegmenter" : [ liste med vegsegmenter ]
+
+        Parameter vegsegmenter=True de-normaliserer, dvs hvis et objekt har N vegsegmenter 
+        får du returnert N forekomster av objektet, ett for hver unike vegsegment. Videre 
+        blir egenskapene vegsystemreferanse og vegsegmenter ikke lister, men dictionaries 
+
+        NB! Når vi returnerer individuelle vegsegmenter tar vi med vegsegmenter gyldige i dag,
+        dvs åpen sluttdato.
+
+        Paramter relasjoner=False: Tar ikke med liste over relasjoner til andre objekter
+
+        Parameter geometri=False: Tar ikke med s.k. egengeometri(er)
+
+        """
+
+        mydata = []
+        if self.antall and self.antall > 10000: 
+            print( 'Eksport av', self.antall, 'objekter kommer til å ta tid...')
+
+        count = 0
+        feat = self.nesteForekomst()
+        while feat:
+
+            meta = { }
+            
+            meta['objekttype']  = feat['metadata']['type']['id']
+            meta['nvdbId'] = feat['id']
+            meta['versjon'] = feat['metadata']['versjon']
+            # meta['metadata'] = feat['metadata']
+
+            egenskaper = egenskaper2records( feat['egenskaper'], relasjoner=relasjoner, geometri=geometri )
+            egenskaper = merge_dicts( meta, egenskaper)
+
+            if vegsegmenter: 
+                for seg in feat['vegsegmenter']:
+                    if not 'sluttdato' in seg.keys():
+                        s2 = {  'veglenkesekvensid' : seg['veglenkesekvensid'], 
+                                'startposisjon'     : seg['startposisjon'], 
+                                'sluttposisjon'     : seg['sluttposisjon'], 
+                                'lengde'            : seg['lengde'],
+                                'detaljnivå'        : seg['detaljnivå'],
+                                'typeVeg'           : seg['typeVeg'],
+                                'kommune'           : seg['kommune'], 
+                                'fylke'             : seg['fylke'],
+                                'vref'              : seg['vegsystemreferanse']['kortform']   }
+
+                        delkeys = [ 'strekning', 'kryssdel', 'sideanlegg']
+                        for hvaslag in delkeys: 
+                            if  hvaslag in seg['vegsystemreferanse'].keys(): 
+                                s2['trafikantgruppe'] = seg['vegsystemreferanse'][hvaslag]['trafikantgruppe']
+                            
+                        s2['geometri'] = seg['geometri']['wkt']
+                        egenskaper_kopi = deepcopy( egenskaper )
+                        egenskaper_kopi = merge_dicts( egenskaper_kopi, s2)
+                        mydata.append( egenskaper_kopi )
+            else: 
+                egenskaper['vegsystemreferanser'] = ','.join([ d['kortform'] for d in feat['lokasjon']['vegsystemreferanser'] ] )
+                egenskaper['stedfestinger']       = ','.join([ d['kortform'] for d in feat['lokasjon']['stedfestinger'] ] )
+                egenskaper['geometri']            = feat['geometri']['wkt']
+                mydata.append( egenskaper )
+
+
+            feat = self.nesteForekomst()
+
+        return mydata
+
 
 class nvdbFagObjekt():
     """Class for NVDB objects, with methods to get data from them"""
@@ -710,63 +790,7 @@ class nvdbFagObjekt():
             if eg['navn'] in skjem2.keys():
                 skjem2[eg['navn']] = eg['verdi']
             
-        return skjem2
-        
-    def to_records(self, vegsegmenter=False, relasjoner=False, geometri=False ): 
-        """
-        Eksporterer til en liste med dictionaries med struktur 
-            "objekttype" : INT,
-            "objektId" : INT, 
-            "versjon" : INT,
-            "metadata" : metadata-element (dictionary)
-            "egenskapnavn1" : verdi,
-            "egenskapnavn2" : geometri,
-                ...
-            "geometri" : "WELL KNOWN TEXT" 
-            "vref" : Kortform vegsystemreferanse. Hvis det er fler enn ett element blir dette en 
-                     kommaseparert liste.  
-            "vegsystemreferanser : [ liste med vegsystemreferanse-dictionary ]
-            "vegsegmenter" : [ liste med vegsegmenter ]
-
-        Parameter vegsegmenter=True de-normaliserer, dvs hvis et objekt har N vegsegmenter 
-        får du returnert N forekomster av objektet, ett for hver unike vegsegment. Videre 
-        blir egenskapene vegsystemreferanse og vegsegmenter ikke lister, men dictionaries 
-        
-        NB! Når vi returnerer individuelle vegsegmenter tar vi med vegsegmenter gyldige i dag,
-        dvs åpen sluttdato.
-
-        Paramter relasjoner=False: Tar ikke med liste over relasjoner til andre objekter
-
-        Parameter geometri=False: Tar ikke med s.k. egengeometri(er)
-        """
-        mydata = []
-        if self.antall > 10000: 
-            print( 'Eksport av', self.antall, 'objekter kommer til å ta tid...')
-
-        count = 0
-        feat = self.nesteForekomst()
-        while feat:
-
-            meta = { }
-            
-            meta['objekttype']  = feat['metadata']['type']['id']
-            meta['nvdbId'] = feat['id']
-            meta['versjon'] = feat['metadata']['versjon']
-            # meta['metadata'] = feat['metadata']
-
-            egenskaper = egenskaper2records( egenskaper, relasjoner=relasjoner, geometri=geometri ):
-            egenskaper = merge_dicts( meta, egenskaper)
-
-            if vegsegmenter: 
-                pass
-                
-
-            else: 
-                pass
-
-            feat = self.nesteForekomst()
-
-
+        return skjem2        
 
     def wkt( self):
         """Returns the geometry of the object as Well Known text (WKT)
