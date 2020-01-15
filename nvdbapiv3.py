@@ -18,7 +18,7 @@ UFERDIG, holder på å skrive om til V3...
 """
 
 class nvdbVegnett: 
-    """Klasse for spørringer mot NVDB for å hente vegnett. 
+    """Klasse for spørringer mot NVDB for å hente segmentert vegnett. 
     Jobber dynamisk mot NVDB api for å hente statistikk, laste ned data etc.
     Holder alle parametre som inngår i dialogen med NVDB api. 
 
@@ -44,7 +44,7 @@ class nvdbVegnett:
         
         
         self.geofilter = {}
-        self.headers =   { 'accept' : ' application/vnd.vegvesen.nvdb-v3-rev1+json', 
+        self.headers =   { 'accept' : 'application/vnd.vegvesen.nvdb-v3-rev1+json', 
                             'X-Client' : 'nvdbapi.py',
                             'X-Kontaktperson' : 'Anonymous'}
                             
@@ -68,10 +68,8 @@ class nvdbVegnett:
         self.respons  = { }
         
         self.data = { 'objekter' : []}
-        self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
+        self.apiurl = 'https://www.vegvesen.no/nvdb/api/v3/'
         
-        
-
 
     def nestePaginering(self):
         """ = True | False. Blar videre til neste oppslag (side) i pagineringen.
@@ -110,7 +108,7 @@ class nvdbVegnett:
             elif isinstance( self, nvdbVegnett): 
                 parametre = merge_dicts( self.geofilter, 
                         { 'antall' : self.paginering['antall'] } )
-                self.data = self.anrope( 'vegnett/lenker', parametre=parametre )
+                self.data = self.anrope( 'vegnett/veglenkesekvenser/segmentert', parametre=parametre )
 
             self.paginering['initielt'] = False
 
@@ -178,7 +176,7 @@ class nvdbVegnett:
             elif isinstance( self, nvdbVegnett): 
                 parametre = merge_dicts( self.geofilter, 
                         { 'antall' : self.paginering['antall'] } )
-                self.data = self.anrope( 'vegnett/lenker', parametre=parametre )
+                self.data = self.anrope( 'vegnett/veglenkesekvenser/segmentert', parametre=parametre )
 
             self.paginering['initielt'] = False
 
@@ -442,8 +440,7 @@ class nvdbFagdata(nvdbVegnett):
         
 
         # Standardverdier for responsen
-        self.respons  = { 'inkluder' :  ['alle'], # Komma-separert liste
-                            'geometritoleranse' : None
+        self.respons  = { 'inkluder' :  ['alle'] # Komma-separert liste
                         }
         
         # Leser verdier for http header fra JSON-fil
@@ -460,7 +457,7 @@ class nvdbFagdata(nvdbVegnett):
     def statistikk(self): 
         if self.objektTypeId: 
         
-            parametre = self.allfilters() 
+            parametre = deepcopy( self.allfilters() )
             
             # Fjerner parametre som ikke gir mening (men feilmelding) for statistikk-kall
             forbud = [ 'antall', 'start', 'inkluder', 'geometritoleranse', 'projeksjon', 'dybde' ]
@@ -647,12 +644,19 @@ class nvdbFagdata(nvdbVegnett):
         """
 
         mydata = []
+        if not self.antall: 
+            self.statistikk()
+
         if self.antall and self.antall > 10000: 
             print( 'Eksport av', self.antall, 'objekter kommer til å ta tid...')
 
         count = 0
+        terskler = [ 1000, 10000]
         feat = self.nesteForekomst()
         while feat:
+            count += 1
+            if count == 1000 or count == 5000 or count % 10000 == 0: 
+                print( 'Objekt', count, 'av', self.antall)
 
             meta = { }
             
@@ -892,19 +896,20 @@ def finnid(objektid, kunvegnett=False, kunfagdata=False, miljo=False):
             # Må hente fagobjektet på ny for å få alle segmenter (inkluder=alle)
             res = b.anrope( res['href'], parametre = { 'inkluder' : 'alle' } ) 
 
-
     # Henter vegnett
     if kunvegnett or (not kunfagdata) or (not res and not kunfagdata): 
         try: 
-            res = b.anrope( 'vegnett/lenker/' + str(objektid), silent=True)
+            res = b.anrope( 'vegnett/veglenkesekvenser/segmentert/' + str(objektid), silent=True)
             
         except ValueError: 
             pass
 
+        # Sikrer at vi alltid returnerer liste med vegsegmenter - selv om vi kun har ett segment
+        if isinstance( res, dict): 
+            res = [ res ]
 
     if not res: 
         print( "Fant intet NVDB objekt eller vegnett med ID = " + str(objektid))
-
         
     return res
 
