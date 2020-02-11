@@ -6,12 +6,13 @@ import requests
 from warnings import warn
 import os
 from copy import deepcopy
+import apiforbindelse
 #import pdb
 
 # Uncomment to silent those unverified https-request warnings
 requests.packages.urllib3.disable_warnings() 
 
-"""Bibliotek for å hente data fra NVDB api V2 (og senere versjoner)
+"""Bibliotek for å hente data fra NVDB api V3 (og senere versjoner)
 Har 2 klasser, nvdbVegnett og nvdbFagdata
 
 UFERDIG, holder på å skrive om til V3... 
@@ -40,7 +41,7 @@ class nvdbVegnett:
     """
     
     
-    def __init__( self):
+    def __init__( self, miljo=None):
         
         
         self.geofilter = {}
@@ -68,8 +69,11 @@ class nvdbVegnett:
         self.respons  = { }
         
         self.data = { 'objekter' : []}
-        self.apiurl = 'https://www.vegvesen.no/nvdb/api/v3/'
-        
+        self.forbindelse = apiforbindelse.apiforbindelse()
+        if not miljo:
+            miljo = 'prod'
+        self.miljo( miljo)
+
 
     def nestePaginering(self):
         """ = True | False. Blar videre til neste oppslag (side) i pagineringen.
@@ -241,7 +245,7 @@ class nvdbVegnett:
     def add_request_arguments( self, parameters): 
         """Appends (or updates) key-value parameters to the data retrieval request
         Input argument is a dict. 
-        This modifies the .response 
+        This modifies the response 
         
         Example
         p = nvdbFagdata(45)
@@ -265,7 +269,8 @@ class nvdbVegnett:
         else: 
             url = path 
 
-        r = requests.get(url, params=parametre, headers=self.headers)
+        # r = requests.get(url, params=parametre, headers=self.headers)
+        r = self.forbindelse.les( url, params=parametre, headers=self.headers )
         
         self.sisteanrop = r.url
         
@@ -361,11 +366,14 @@ class nvdbVegnett:
         if args and isinstance( args[0], str): 
             
             if args[0].lower() == 'utv': 
-                self.apiurl = 'https://www.utv.vegvesen.no/nvdb/api/v3/'
-            elif args[0].lower() == 'test':
-                self.apiurl = 'https://www.test.vegvesen.no/nvdb/api/v3/'
+                self.apiurl = 'https://apilesv3.utv.atlas.vegvesen.no/'
+                self.forbindelse.velgmiljo('utvles')
+            elif args[0].lower() == 'test': 
+                self.apiurl = 'https://apilesv3.test.atlas.vegvesen.no/'
+                self.forbindelse.velgmiljo('testles')
             elif args[0].lower() == 'prod': 
-                self.apiurl = 'https://www.vegvesen.no/nvdb/api/v3/'
+                self.apiurl = 'https://apilesv3.atlas.vegvesen.no/'
+                self.forbindelse.velgmiljo('prodles')
             else: 
                 print( "Forstod ikke parameter:", args[0])
                 print("Lovlige valg: utv, test eller prod")
@@ -408,7 +416,7 @@ class nvdbFagdata(nvdbVegnett):
     
     
     
-    def __init__( self, objTypeID):
+    def __init__( self, objTypeID, miljo=None):
 
 
         self.headers =   { 'accept' : 'application/vnd.vegvesen.nvdb-v3-rev1+json', 
@@ -437,7 +445,11 @@ class nvdbFagdata(nvdbVegnett):
         self.geofilter = {}
         self.egenskapsfilter = {}
         self.overlappfilter = {} 
-        
+        self.forbindelse = apiforbindelse.apiforbindelse()
+        if not miljo: 
+            miljo = 'prod'
+        self.miljo( miljo)
+        self.forbindelse.velgmiljo( 'prodles')
 
         # Standardverdier for responsen
         self.respons  = { 'inkluder' :  ['alle'] # Komma-separert liste
@@ -693,9 +705,10 @@ class nvdbFagdata(nvdbVegnett):
             else: 
                 egenskaper['vegsystemreferanser'] = ','.join([ d['kortform'] for d in feat['lokasjon']['vegsystemreferanser'] ] )
                 egenskaper['stedfestinger']       = ','.join([ d['kortform'] for d in feat['lokasjon']['stedfestinger'] ] )
-                egenskaper['geometri']            = feat['geometri']['wkt']
+                egenskaper['vegsegmenter']        = feat['vegsegmenter']
+                if 'geometri' in feat.keys():
+                    egenskaper['geometri']  = feat['geometri']['wkt']
                 mydata.append( egenskaper )
-
 
             feat = self.nesteForekomst()
 
