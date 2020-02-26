@@ -12,6 +12,7 @@ import getpass
 import requests
 import json
 import copy 
+import pdb
 
 
 class apiforbindelse( ):
@@ -44,30 +45,29 @@ class apiforbindelse( ):
         self.tokenId = ''
         self.requestsession = requests.session()
         self.headers['X-Client-Session'] = str( uuid.uuid4() )
-        self.velgmiljo( miljo=miljo)
+        if miljo:
+            self.velgmiljo( miljo=miljo)
         self.proxies = None
         # self.proxies =  {  "http": "http://proxy.vegvesen.no:8080", "https": "http://proxy.vegvesen.no:8080" }
 
     def velgmiljo( self, miljo='utvles'):
+        self.miljo = miljo
 
               
         if miljo == 'utvles': 
             self.apiurl = 'https://apilesv3.utv.atlas.vegvesen.no' 
-            self.openAMurl = 'https://www.utv.vegvesen.no/openam/json/authenticate' 
-            self.openAmNavn = 'iPlanetDirectoryProOAMutv'
+
             self.headers['Accept'] = 'application/vnd.vegvesen.nvdb-v3-rev1+json'
             self.proxies =  {  "http": "proxy.vegvesen.no:8080", "https": "proxy.vegvesen.no:8080" }
 
         elif miljo == 'testles': 
             self.apiurl = 'https://apilesv3.test.atlas.vegvesen.no' 
-            self.openAMurl = 'https://www.test.vegvesen.no/openam/json/authenticate' 
-            self.openAmNavn = 'iPlanetDirectoryProOAMTP'
+
             self.headers['Accept'] = 'application/vnd.vegvesen.nvdb-v3-rev1+json'
         
         elif miljo == 'prodles': 
             self.apiurl = 'https://apilesv3.atlas.vegvesen.no' 
-            self.openAMurl = 'https://www.vegvesen.no/openam/json/authenticate' 
-            self.openAmNavn = 'iPlanetDirectoryProOAM'
+
             self.headers['Accept'] = 'application/vnd.vegvesen.nvdb-v3-rev1+json'
 
         elif miljo == 'utvskriv':
@@ -95,7 +95,7 @@ class apiforbindelse( ):
             print( 'Miljø finnes ikke! utvles, utvskriv, testles, testskriv, prodles, prodskriv')
 
                               
-    def login(self, miljo=None, username='jajens', pw=None, klient=None): 
+    def login(self, miljo=None, username='jajens', pw=None, klient=None, user_type='employee'): 
         """
         Logger inn i api.
         
@@ -113,9 +113,66 @@ class apiforbindelse( ):
         if miljo: 
             self.velgmiljo( miljo=miljo)
 
+        if 'skriv' in self.miljo: 
+            self.__loginskriv( username='jajens', pw=pw )
+        elif 'les' in self.miljo: 
+           self.__loginles( username='jajens', pw=pw) 
+        else: 
+            print( 'Miljø ikke korrekt angitt', self.miljo )
+    
+        # Setter sporbarhet 
+        if klient: 
+            self.klientinfo(klient)
+
+        self.headers['X-Client-Session'] = str( uuid.uuid4() )
+
+    def __loginles( self, username='jajens', pw=None, user_type='employee' ): 
+        """
+        Logger inn på apiles, ref
+        https://nvdbapilesv3.docs.apiary.io/#reference/0/autentisering/innlogging
+        """ 
+
+        temp = self.SVVpassord( username=username, pw=pw )
+        body = { 'username' :  temp['X-OpenAM-Username'], 
+                 'password' :  temp['X-OpenAM-Password']
+                }
+
+        if user_type: 
+            body['user_type'] = user_type 
+
+        headers = { 'Content-Type' : 'application/json'}
+
+
+        self.requestsession = requests.session()
+        self.loginrespons = self.requestsession.post( url=self.apiurl + '/auth/login', 
+                                                            headers=headers, json=body  )
+
+        if self.loginrespons.ok: 
+            temp = self.loginrespons.json( )
+            if 'idToken' in temp.keys(): 
+                self.headers['Authorization'] = 'Bearer ' + temp['idToken']
+            else: 
+                print( 'Login', self.apiurl, 'FEILER, ingen idToken i respons')
+
+            if 'refreshToken' in temp.keys():
+                self.refreshToken = temp['refreshToken']
+            else: 
+                print( 'Ingen refreshToken i login-respons fra', self.apiurl)
+
+        else: 
+            print( 'Login', self.apiurl, 'feiler med kode', self.loginrespons.status_code)
+            print( self.loginrespons.text )
+
+
+    def __loginskriv( self, username='jajens', pw=None, klient=None): 
+        """
+        Logger inn mot apiskriv 
+
+        """
         headers = self.SVVpassord( username=username, pw=pw )
         
-        self.loginrespons = self.requestsession.post( url=self.openAMurl, 
+        
+        self.loginrespons = self.requestsession.get( url=self.apiurl, 
                                         headers=headers, 
                                         params = { 'realm' : 'External', 
                                                 'authIndexType' : 'module', 
@@ -132,12 +189,8 @@ class apiforbindelse( ):
                 
         else: 
             print( "Fikk ikke logget på :( " )
-    
-        # Setter sporbarhet 
-        if klient: 
-            self.klientinfo(klient)
 
-        self.headers['X-Client-Session'] = str( uuid.uuid4() )
+
         
     def loggut(self): 
         """

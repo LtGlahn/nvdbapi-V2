@@ -47,7 +47,7 @@ class nvdbVegnett:
         self.geofilter = {}
         self.headers =   { 'accept' : 'application/vnd.vegvesen.nvdb-v3-rev1+json', 
                             'X-Client' : 'nvdbapi.py',
-                            'X-Kontaktperson' : 'Anonymous'}
+                            'X-Kontaktperson' : 'jan.kristian.jensen@vegvesen.no'}
                             
         self.update_http_header()
                             
@@ -352,9 +352,9 @@ class nvdbVegnett:
         Kan endre hvilket miljø vi går mot.
         Parametre: 
             ingen - skriver lenken til NVDB api
-            'utv' - bruker UTVIKLINGSmiljøet
-            'test' - bruker TESTmiljø
-            'prod' - går mot PRODUKSJON
+            'utv' - bruker UTVIKLINGSmiljøet (ATLAS)
+            'test' - bruker TESTmiljø (ATLAS)
+            'prod' - går mot PRODUKSJON (ATLAS)
         eksempel
         b = nvdbFagdata(45)
         b.miljo()
