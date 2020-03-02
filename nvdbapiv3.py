@@ -366,13 +366,13 @@ class nvdbVegnett:
         if args and isinstance( args[0], str): 
             
             if args[0].lower() == 'utv': 
-                self.apiurl = 'https://apilesv3.utv.atlas.vegvesen.no/'
+                self.apiurl = 'https://nvdbapiles-v3.utv.atlas.vegvesen.no/'
                 self.forbindelse.velgmiljo('utvles')
             elif args[0].lower() == 'test': 
-                self.apiurl = 'https://apilesv3.test.atlas.vegvesen.no/'
+                self.apiurl = 'https://nvdbapiles-v3.test.atlas.vegvesen.no/'
                 self.forbindelse.velgmiljo('testles')
             elif args[0].lower() == 'prod': 
-                self.apiurl = 'https://apilesv3.atlas.vegvesen.no/'
+                self.apiurl = 'https://nvdbapiles-v3.atlas.vegvesen.no/'
                 self.forbindelse.velgmiljo('prodles')
             else: 
                 print( "Forstod ikke parameter:", args[0])
@@ -626,7 +626,7 @@ class nvdbFagdata(nvdbVegnett):
         else: 
             return None
         
-    def to_records(self, vegsegmenter=True, relasjoner=False, geometri=False ): 
+    def to_records(self, vegsegmenter=True, relasjoner=False, geometri=False, debug=False ): 
         """
         Eksporterer til en liste med dictionaries med struktur 
         "objekttype" : INT,
@@ -663,6 +663,7 @@ class nvdbFagdata(nvdbVegnett):
             print( 'Eksport av', self.antall, 'objekter kommer til å ta tid...')
 
         count = 0
+        nvdbid_manglergeom = []
         terskler = [ 1000, 10000]
         feat = self.nesteForekomst()
         while feat:
@@ -670,47 +671,62 @@ class nvdbFagdata(nvdbVegnett):
             if count == 1000 or count == 5000 or count % 10000 == 0: 
                 print( 'Objekt', count, 'av', self.antall)
 
-            meta = { }
-            
-            meta['objekttype']  = feat['metadata']['type']['id']
-            meta['nvdbId'] = feat['id']
-            meta['versjon'] = feat['metadata']['versjon']
-            # meta['metadata'] = feat['metadata']
 
-            egenskaper = egenskaper2records( feat['egenskaper'], relasjoner=relasjoner, geometri=geometri )
-            egenskaper = merge_dicts( meta, egenskaper)
+            # Ignorerer dem med tomt geometrielement, ref 
+            # https://github.com/LtGlahn/diskusjon_diverse/tree/master/debug_nvdbapilesv3/vegobjekter 
+            if 'geometri' in feat.keys():
 
-            if vegsegmenter: 
-                for seg in feat['vegsegmenter']:
-                    if not 'sluttdato' in seg.keys():
-                        s2 = {  'veglenkesekvensid' : seg['veglenkesekvensid'], 
-                                'startposisjon'     : seg['startposisjon'], 
-                                'sluttposisjon'     : seg['sluttposisjon'], 
-                                'lengde'            : seg['lengde'],
-                                'detaljnivå'        : seg['detaljnivå'],
-                                'typeVeg'           : seg['typeVeg'],
-                                'kommune'           : seg['kommune'], 
-                                'fylke'             : seg['fylke'],
-                                'vref'              : seg['vegsystemreferanse']['kortform']   }
+                meta = { }
+                
+                meta['objekttype']  = feat['metadata']['type']['id']
+                meta['nvdbId'] = feat['id']
+                meta['versjon'] = feat['metadata']['versjon']
+                # meta['metadata'] = feat['metadata']
 
-                        delkeys = [ 'strekning', 'kryssdel', 'sideanlegg']
-                        for hvaslag in delkeys: 
-                            if  hvaslag in seg['vegsystemreferanse'].keys(): 
-                                s2['trafikantgruppe'] = seg['vegsystemreferanse'][hvaslag]['trafikantgruppe']
-                            
-                        s2['geometri'] = seg['geometri']['wkt']
-                        egenskaper_kopi = deepcopy( egenskaper )
-                        egenskaper_kopi = merge_dicts( egenskaper_kopi, s2)
-                        mydata.append( egenskaper_kopi )
+                egenskaper = egenskaper2records( feat['egenskaper'], relasjoner=relasjoner, geometri=geometri )
+                egenskaper = merge_dicts( meta, egenskaper)
+
+                if vegsegmenter: 
+                    for seg in feat['vegsegmenter']:
+                        if not 'sluttdato' in seg.keys():
+                            s2 = {  'veglenkesekvensid' : seg['veglenkesekvensid'], 
+                                    'startposisjon'     : seg['startposisjon'], 
+                                    'sluttposisjon'     : seg['sluttposisjon'], 
+                                    'lengde'            : seg['lengde'],
+                                    'detaljnivå'        : seg['detaljnivå'],
+                                    'typeVeg'           : seg['typeVeg'],
+                                    'kommune'           : seg['kommune'], 
+                                    'fylke'             : seg['fylke'],
+                                    'vref'              : seg['vegsystemreferanse']['kortform']   }
+
+                            delkeys = [ 'strekning', 'kryssdel', 'sideanlegg']
+                            for hvaslag in delkeys: 
+                                if  hvaslag in seg['vegsystemreferanse'].keys(): 
+                                    s2['trafikantgruppe'] = seg['vegsystemreferanse'][hvaslag]['trafikantgruppe']
+                                
+                            s2['geometri'] = seg['geometri']['wkt']
+                            egenskaper_kopi = deepcopy( egenskaper )
+                            egenskaper_kopi = merge_dicts( egenskaper_kopi, s2)
+                            mydata.append( egenskaper_kopi )
+                else: 
+                    egenskaper['vegsystemreferanser'] = ','.join([ d['kortform'] for d in feat['lokasjon']['vegsystemreferanser'] ] )
+                    egenskaper['stedfestinger']       = ','.join([ d['kortform'] for d in feat['lokasjon']['stedfestinger'] ] )
+                    egenskaper['vegsegmenter']        = feat['vegsegmenter']
+                    if 'geometri' in feat.keys():
+                        egenskaper['geometri']  = feat['geometri']['wkt']
+                    mydata.append( egenskaper )
+
             else: 
-                egenskaper['vegsystemreferanser'] = ','.join([ d['kortform'] for d in feat['lokasjon']['vegsystemreferanser'] ] )
-                egenskaper['stedfestinger']       = ','.join([ d['kortform'] for d in feat['lokasjon']['stedfestinger'] ] )
-                egenskaper['vegsegmenter']        = feat['vegsegmenter']
-                if 'geometri' in feat.keys():
-                    egenskaper['geometri']  = feat['geometri']['wkt']
-                mydata.append( egenskaper )
+                nvdbid_manglergeom.append( feat['id'])
 
             feat = self.nesteForekomst()
+
+        if len( nvdbid_manglergeom ) > 0: 
+            print( 'Manglende geometri-element for', len( nvdbid_manglergeom), 'vegobjekter fra dette søket')
+            print( json.dumps( self.allfilters(), indent=4)  )
+            print( 'fra miljø', self.apiurl )
+            if debug: 
+                print( nvdbid_manglergeom )
 
         return mydata
 

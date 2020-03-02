@@ -55,18 +55,18 @@ class apiforbindelse( ):
 
               
         if miljo == 'utvles': 
-            self.apiurl = 'https://apilesv3.utv.atlas.vegvesen.no' 
+            self.apiurl = 'https://nvdbapiles-v3.utv.atlas.vegvesen.no' 
 
             self.headers['Accept'] = 'application/vnd.vegvesen.nvdb-v3-rev1+json'
-            self.proxies =  {  "http": "proxy.vegvesen.no:8080", "https": "proxy.vegvesen.no:8080" }
+#            self.proxies =  {  "http": "proxy.vegvesen.no:8080", "https": "proxy.vegvesen.no:8080" }
 
         elif miljo == 'testles': 
-            self.apiurl = 'https://apilesv3.test.atlas.vegvesen.no' 
+            self.apiurl = 'https://nvdbapiles-v3.test.atlas.vegvesen.no' 
 
             self.headers['Accept'] = 'application/vnd.vegvesen.nvdb-v3-rev1+json'
         
         elif miljo == 'prodles': 
-            self.apiurl = 'https://apilesv3.atlas.vegvesen.no' 
+            self.apiurl = 'https://nvdbapiles-v3.atlas.vegvesen.no' 
 
             self.headers['Accept'] = 'application/vnd.vegvesen.nvdb-v3-rev1+json'
 
@@ -144,7 +144,8 @@ class apiforbindelse( ):
 
 
         self.requestsession = requests.session()
-        self.loginrespons = self.requestsession.post( url=self.apiurl + '/auth/login', 
+        loginurl = url=self.apiurl + '/auth/login'
+        self.loginrespons = self.requestsession.post( loginurl, 
                                                             headers=headers, json=body  )
 
         if self.loginrespons.ok: 
@@ -160,7 +161,7 @@ class apiforbindelse( ):
                 print( 'Ingen refreshToken i login-respons fra', self.apiurl)
 
         else: 
-            print( 'Login', self.apiurl, 'feiler med kode', self.loginrespons.status_code)
+            print( 'Login', loginurl, 'feiler med kode', self.loginrespons.status_code)
             print( self.loginrespons.text )
 
 
