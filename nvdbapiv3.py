@@ -714,6 +714,7 @@ class nvdbFagdata(nvdbVegnett):
                     egenskaper['vegsegmenter']        = feat['vegsegmenter']
                     if 'geometri' in feat.keys():
                         egenskaper['geometri']  = feat['geometri']['wkt']
+                    egenskaper['lengde'] = feat['lokasjon']['lengde']
                     mydata.append( egenskaper )
 
             else: 

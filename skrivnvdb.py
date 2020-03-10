@@ -71,244 +71,245 @@ import requests
 import json
 import getpass
 import copy
+import apiforbindelse
 
-class apiskrivforbindelse():
-    """
-    Håndterer innlogging og kommunikasjon mot skriveAPI.
-    """
+# class apiskrivforbindelse():
+#     """
+#     Håndterer innlogging og kommunikasjon mot skriveAPI.
+#     """
     
-    def __init__( self, miljo='nvdbdocker', content='json'):
-        """
-        Oppretter en instans av apiskrivforbindelse
+#     def __init__( self, miljo='nvdbdocker', content='json'):
+#         """
+#         Oppretter en instans av apiskrivforbindelse
         
-        Arguments: 
-            None 
-        Keywords: 
-            miljo: string, 'nvdbdocker' | 'utv' | 'test' | 'prod'
-                    (Kan droppes, men settes da ved innlogging)
-            content: string 'json' (default) | 'xml'
+#         Arguments: 
+#             None 
+#         Keywords: 
+#             miljo: string, 'nvdbdocker' | 'utv' | 'test' | 'prod'
+#                     (Kan droppes, men settes da ved innlogging)
+#             content: string 'json' (default) | 'xml'
                 
-        """ 
+#         """ 
         
-        self.headers = {  "Content-Type" : "application/json", 
-                            "Accept" : "application/json", 
-                            "X-Client" : "PythonNvdbskriv" 
-                              }
+#         self.headers = {  "Content-Type" : "application/json", 
+#                             "Accept" : "application/json", 
+#                             "X-Client" : "PythonNvdbskriv" 
+#                               }
                               
-        if content== 'xml': 
-            self.headers["Content-Type"] = 'application/xml'
+#         if content== 'xml': 
+#             self.headers["Content-Type"] = 'application/xml'
                               
-        self.proxies = {} 
-        self.tokenId = ''
+#         self.proxies = {} 
+#         self.tokenId = ''
                               
-    def login(self, miljo='nvdbdocker', proxies=False, username='jajens', 
-              pw=None, klient=None): 
-        """
-        Logger inn i skriveAPI.
+#     def login(self, miljo='nvdbdocker', proxies=False, username='jajens', 
+#               pw=None, klient=None): 
+#         """
+#         Logger inn i skriveAPI.
         
-        Arguments: 
-            None
+#         Arguments: 
+#             None
             
-        Keywords: 
-            miljo : string, en av 'nvdbdocker' (default), 'utv', 'test', 'prod'
+#         Keywords: 
+#             miljo : string, en av 'nvdbdocker' (default), 'utv', 'test', 'prod'
             
-            proxies : Boolean True | False (default) 
-                angir om vi skal prøve SVV-interrne proxy
+#             proxies : Boolean True | False (default) 
+#                 angir om vi skal prøve SVV-interrne proxy
         
-        """
+#         """
         
-        if miljo == 'nvdbdocker': 
+#         if miljo == 'nvdbdocker': 
             
-            if proxies: 
-                self.proxies = {'http': 'proxy.vegvesen.no:8080', 
-                                'https': 'proxy.vegvesen.no:8080'} 
+#             if proxies: 
+#                 self.proxies = {'http': 'proxy.vegvesen.no:8080', 
+#                                 'https': 'proxy.vegvesen.no:8080'} 
 
             
-            self.apiurl = 'http://164.132.107.230:8080'
-            bruker = 'root00'
+#             self.apiurl = 'http://164.132.107.230:8080'
+#             bruker = 'root00'
             
-            self.requestsession = requests.session()
-            self.loginrespons = self.requestsession.post( url=self.apiurl + '/login', 
-                                         proxies=self.proxies, 
-                                         headers=self.headers, 
-                                         data = { 'user-id' : bruker })
+#             self.requestsession = requests.session()
+#             self.loginrespons = self.requestsession.post( url=self.apiurl + '/login', 
+#                                          proxies=self.proxies, 
+#                                          headers=self.headers, 
+#                                          data = { 'user-id' : bruker })
             
-        else: 
-            if miljo == 'utv': 
-                self.apiurl = 'https://www.utv.vegvesen.no' 
-                openAMurl = 'https://www.utv.vegvesen.no/openam/json/authenticate' 
-                openAmNavn = 'iPlanetDirectoryProOAMutv'
+#         else: 
+#             if miljo == 'utv': 
+#                 self.apiurl = 'https://www.utv.vegvesen.no' 
+#                 openAMurl = 'https://www.utv.vegvesen.no/openam/json/authenticate' 
+#                 openAmNavn = 'iPlanetDirectoryProOAMutv'
             
-            elif miljo == 'test': 
-                self.apiurl = 'https://www.test.vegvesen.no' 
-                openAMurl = 'https://www.test.vegvesen.no/openam/json/authenticate' 
-                openAmNavn = 'iPlanetDirectoryProOAMTP'
+#             elif miljo == 'test': 
+#                 self.apiurl = 'https://www.test.vegvesen.no' 
+#                 openAMurl = 'https://www.test.vegvesen.no/openam/json/authenticate' 
+#                 openAmNavn = 'iPlanetDirectoryProOAMTP'
                 
                 
-            elif miljo == 'prod': 
-                self.apiurl = 'https://www.vegvesen.no' 
-                openAMurl = 'https://www.vegvesen.no/openam/json/authenticate'
-                openAmNavn = 'iPlanetDirectoryProOAM'
+#             elif miljo == 'prod': 
+#                 self.apiurl = 'https://www.vegvesen.no' 
+#                 openAMurl = 'https://www.vegvesen.no/openam/json/authenticate'
+#                 openAmNavn = 'iPlanetDirectoryProOAM'
                 
-            else:
-                print( 'Miljø finnes ikke! utv, test eller prod - eller nvdbdocker')
+#             else:
+#                 print( 'Miljø finnes ikke! utv, test eller prod - eller nvdbdocker')
 
-            headers = self.SVVpassord( username=username, pw=pw )
+#             headers = self.SVVpassord( username=username, pw=pw )
             
-            self.requestsession = requests.session()
-            self.loginrespons = self.requestsession.post( url=openAMurl, 
-                                         headers=headers, 
-                                         params = { 'realm' : 'External', 
-                                                 'authIndexType' : 'module', 
-                                                 'authIndexValue' : 'LDAP'})
+#             self.requestsession = requests.session()
+#             self.loginrespons = self.requestsession.post( url=openAMurl, 
+#                                          headers=headers, 
+#                                          params = { 'realm' : 'External', 
+#                                                  'authIndexType' : 'module', 
+#                                                  'authIndexValue' : 'LDAP'})
             
-            if self.loginrespons.ok:
-                temp = self.loginrespons.json()
-                if 'tokenId' in temp.keys():
+#             if self.loginrespons.ok:
+#                 temp = self.loginrespons.json()
+#                 if 'tokenId' in temp.keys():
                     
-                    self.headers['Cookie'] = openAmNavn + '= ' + temp['tokenId']
+#                     self.headers['Cookie'] = openAmNavn + '= ' + temp['tokenId']
                     
-                else: 
-                    print( 'Fikk ikke logget på - ingen tokenId :(' )
+#                 else: 
+#                     print( 'Fikk ikke logget på - ingen tokenId :(' )
                     
-            else: 
-                print( "Fikk ikke logget på :( " )
+#             else: 
+#                 print( "Fikk ikke logget på :( " )
         
-        # Setter sporbar http header X-Client 
-        if klient: 
-            self.klientinfo(klient)
+#         # Setter sporbar http header X-Client 
+#         if klient: 
+#             self.klientinfo(klient)
         
-    def loggut(self): 
-        """
-        Logger ut av skriveAPI.
+#     def loggut(self): 
+#         """
+#         Logger ut av skriveAPI.
         
-        Arguments: 
-            None 
-        """ 
+#         Arguments: 
+#             None 
+#         """ 
         
-        if 'vegvesen' in self.apiurl: 
-            self.debug = self.requestsession.get( self.apiurl + '/openam/UI/Logout') 
-        else: 
-            self.debug = self.requestsession.get( self.apiurl + '/logout')
+#         if 'vegvesen' in self.apiurl: 
+#             self.debug = self.requestsession.get( self.apiurl + '/openam/UI/Logout') 
+#         else: 
+#             self.debug = self.requestsession.get( self.apiurl + '/logout')
         
-    def SVVpassord( self, username=None, pw=None): 
+#     def SVVpassord( self, username=None, pw=None): 
         
-        if not username: 
-            username = input( 'Username: ' )
-        if not pw: 
-            pw = getpass.getpass( username+"'s Password: ")
-        headers = copy.deepcopy( self.headers )
-        headers['X-OpenAM-Username'] = username
-        headers['X-OpenAM-Password'] = pw
+#         if not username: 
+#             username = input( 'Username: ' )
+#         if not pw: 
+#             pw = getpass.getpass( username+"'s Password: ")
+#         headers = copy.deepcopy( self.headers )
+#         headers['X-OpenAM-Username'] = username
+#         headers['X-OpenAM-Password'] = pw
         
-        return headers
+#         return headers
     
-    def klientinfo( self, klientinfo):
-        """
-        Få bedre sporbarhet / enklere søk i skriveapi-GUI! 
+#     def klientinfo( self, klientinfo):
+#         """
+#         Få bedre sporbarhet / enklere søk i skriveapi-GUI! 
         
-        Via http headeren X-Client kan du angi noe som er unikt for det problemet
-        du jobber med akkurat nå, f.eks. fikse bomstasjon-takster. 
+#         Via http headeren X-Client kan du angi noe som er unikt for det problemet
+#         du jobber med akkurat nå, f.eks. fikse bomstasjon-takster. 
         
         
-        Endringssett-objektets egenskap headers['X-Client'] settes lik klientinfo
+#         Endringssett-objektets egenskap headers['X-Client'] settes lik klientinfo
         
-        Arguments: 
-            klientinfo TEKST - det du vil hete! 
+#         Arguments: 
+#             klientinfo TEKST - det du vil hete! 
             
-        Keywords: NONE
+#         Keywords: NONE
         
-        Returns: NONE
+#         Returns: NONE
             
-        """
-        self.headers['X-Client'] = str( klientinfo )
+#         """
+#         self.headers['X-Client'] = str( klientinfo )
     
-    def skrivtil( self, path, data, **kwargs): 
-        """
-        Poster data til NVDB api skriv.
+#     def skrivtil( self, path, data, **kwargs): 
+#         """
+#         Poster data til NVDB api skriv.
         
-        Arguments:
-            path : URL, enten relativt til /apiskriv, eller fullstendig adresse
+#         Arguments:
+#             path : URL, enten relativt til /apiskriv, eller fullstendig adresse
             
-            data : Datastrukturen som skal postes. Enten json (default) 
-                    eller xml (angis i så fall med content-argumentet ved 
-                    opprettelse av endringssett-objektet, eller ved å sette 
-                    manuelt 
-                    endringsett.headers["Content-Type"] = 'application/xml')
+#             data : Datastrukturen som skal postes. Enten json (default) 
+#                     eller xml (angis i så fall med content-argumentet ved 
+#                     opprettelse av endringssett-objektet, eller ved å sette 
+#                     manuelt 
+#                     endringsett.headers["Content-Type"] = 'application/xml')
                     
-        Keywords: 
-            Eventuelle nøkkelord-argumenter sendes til python request-modulen
+#         Keywords: 
+#             Eventuelle nøkkelord-argumenter sendes til python request-modulen
 
-        """
+#         """
         
-        if path[0:4] == 'http': 
-            url = path
-        else: 
-            url = self.apiurl + path
+#         if path[0:4] == 'http': 
+#             url = path
+#         else: 
+#             url = self.apiurl + path
         
-        if self.headers['Content-Type'] == 'applcation/xml': 
-            return self.requestsession.post( url=url, 
-                                     proxies=self.proxies, 
-                                     headers=self.headers, 
-                                     data = data, **kwargs)
-        elif self.headers['Content-Type'] == 'application/json': 
-            return self.requestsession.post( url=url, 
-                                    proxies=self.proxies, 
-                                    headers=self.headers, 
-                                    json = data, **kwargs)
-        else: 
-            print( "Sjekk CONTENT-TYPE på api-forbindelse objektet")
-            return None
+#         if self.headers['Content-Type'] == 'applcation/xml': 
+#             return self.requestsession.post( url=url, 
+#                                      proxies=self.proxies, 
+#                                      headers=self.headers, 
+#                                      data = data, **kwargs)
+#         elif self.headers['Content-Type'] == 'application/json': 
+#             return self.requestsession.post( url=url, 
+#                                     proxies=self.proxies, 
+#                                     headers=self.headers, 
+#                                     json = data, **kwargs)
+#         else: 
+#             print( "Sjekk CONTENT-TYPE på api-forbindelse objektet")
+#             return None
         
-    def les( self, path, **kwargs): 
-        """
-        Http GET requests til NVDB REST skriveapi
+#     def les( self, path, **kwargs): 
+#         """
+#         Http GET requests til NVDB REST skriveapi
         
-        Arguments:
-            path : URL, enten relativt til /apiskriv, eller fullstendig 
+#         Arguments:
+#             path : URL, enten relativt til /apiskriv, eller fullstendig 
             
-        Keywords: 
-            Eventuelle nøkkelord-argumenter sendes til python request-modulen
-        """
+#         Keywords: 
+#             Eventuelle nøkkelord-argumenter sendes til python request-modulen
+#         """
         
-        if path[0:4] == 'http': 
-            url = path
-        else: 
-            url = self.apiurl + path
+#         if path[0:4] == 'http': 
+#             url = path
+#         else: 
+#             url = self.apiurl + path
         
         
-        """Leser data fra NVDB api"""
-        return self.requestsession.get( url=url, 
-                                       proxies=self.proxies,
-                                       headers=self.headers, 
-                                       **kwargs)
+#         """Leser data fra NVDB api"""
+#         return self.requestsession.get( url=url, 
+#                                        proxies=self.proxies,
+#                                        headers=self.headers, 
+#                                        **kwargs)
         
 
-    def checklock( self, endringsettID ): 
-        """Python request kall for å sjekke låser for endringssett.
+#     def checklock( self, endringsettID ): 
+#         """Python request kall for å sjekke låser for endringssett.
         
-        Returnerer python requests objekt. 
-        """
-        url = self.apiurl + '/nvdb/apiskriv/kontrollpanel/data/locks'
-        params  ={ 'blocking' : endringsettID }
+#         Returnerer python requests objekt. 
+#         """
+#         url = self.apiurl + '/nvdb/apiskriv/kontrollpanel/data/locks'
+#         params  ={ 'blocking' : endringsettID }
         
-        r = self.les( url, params=params )
-        return r 
+#         r = self.les( url, params=params )
+#         return r 
         
-    def checklock_prettyprint( self, endringsettID, printheader=False):
-        """
-        Pen utskrift av låser som evt blokkerer endringssettet.
-        """
-        r = self.checklock( endringsettID)
-        locks = r.json()
-        if len(locks) > 0: 
-            if printheader:
-                print( "lockId endringssettID username commonName origin time")
-            for lock in locks: 
-                print( lock['lockId'], endringsettID, lock['username'], lock['commonName'], 
-                      lock['origin'], lock['time'] )
-        else: 
-            print( "No locks for", endringsettID)
+#     def checklock_prettyprint( self, endringsettID, printheader=False):
+#         """
+#         Pen utskrift av låser som evt blokkerer endringssettet.
+#         """
+#         r = self.checklock( endringsettID)
+#         locks = r.json()
+#         if len(locks) > 0: 
+#             if printheader:
+#                 print( "lockId endringssettID username commonName origin time")
+#             for lock in locks: 
+#                 print( lock['lockId'], endringsettID, lock['username'], lock['commonName'], 
+#                       lock['origin'], lock['time'] )
+#         else: 
+#             print( "No locks for", endringsettID)
 
 class endringssett(): 
     """
@@ -368,7 +369,7 @@ class endringssett():
          
         """
         if not apiskriv: 
-            apiskriv = apiskrivforbindelse()
+            apiskriv = apiforbindelse.apiforbindelse()
         
         self.forbindelse = apiskriv
     
@@ -380,7 +381,7 @@ class endringssett():
             print( "Ingen aktiv forbindelse med NVDB api skriv")
             return 
             
-        self.validertrespons = self.forbindelse.skrivtil( '/nvdb/apiskriv/rest/v2/endringssett/validator', self.data )
+        self.validertrespons = self.forbindelse.skrivtil( '/nvdb/apiskriv/rest/v3/endringssett/validator', self.data )
         if self.validertrespons.ok: 
             self.validertresultat = self.validertrespons.json()
             
@@ -427,7 +428,7 @@ class endringssett():
         if returnNvdbId: 
             return nvdbid_feiler
         
-    def registrer(self): 
+    def registrer(self, dryrun=False): 
         """Registrerer et endringssett. Forutsetter innlogget tilkobling
         """
         
@@ -435,7 +436,12 @@ class endringssett():
             print( "Ingen aktiv forbindelse med NVDB api skriv" )
             return
         
-        self.registrertrespons = self.forbindelse.skrivtil('/nvdb/apiskriv/rest/v2/endringssett', self.data )
+        if dryrun: 
+            self.forbindelse.headers['X-NVDB-DryRun'] = 'true'
+        else: 
+            self.forbindelse.headers['X-NVDB-DryRun'] = 'false'
+
+        self.registrertrespons = self.forbindelse.skrivtil('/nvdb/apiskriv/rest/v3/endringssett', self.data )
         if self.registrertrespons.ok: 
             self.status = 'registrert' 
             

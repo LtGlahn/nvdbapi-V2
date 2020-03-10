@@ -51,6 +51,12 @@ class apiforbindelse( ):
         # self.proxies =  {  "http": "http://proxy.vegvesen.no:8080", "https": "http://proxy.vegvesen.no:8080" }
 
     def velgmiljo( self, miljo='utvles'):
+        """
+        Velger miljø. Default = utvles, eller bruk nøkkelord miljo=<navn på miljø>. 
+
+        Lovlige verdier: NVDB api les v3: utvles, testles, prodles
+                         NVDB api SKRIV v3: utvskriv, testskriv, prodskriv
+        """ 
         self.miljo = miljo
 
               
@@ -72,22 +78,19 @@ class apiforbindelse( ):
 
         elif miljo == 'utvskriv':
             self.apiurl = 'https://www.utv.vegvesen.no' 
-            self.openAMurl = 'https://www.utv.vegvesen.no/openam/json/authenticate' 
-            self.openAmNavn = 'iPlanetDirectoryProOAMutv'
+            self.skrivloginurl = 'https://www.utv.vegvesen.no/ws/no/vegvesen/ikt/sikkerhet/aaa/autentiser' 
             self.headers['Accept'] = 'application/json'
             self.headers['Content-Type'] = 'application/json'
 
         elif miljo == 'testskriv': 
             self.apiurl = 'https://www.test.vegvesen.no' 
-            self.openAMurl = 'https://www.test.vegvesen.no/openam/json/authenticate' 
-            self.openAmNavn = 'iPlanetDirectoryProOAMTP'
+            self.skrivloginurl = 'https://www.test.vegvesen.no/ws/no/vegvesen/ikt/sikkerhet/aaa/autentiser' 
             self.headers['Accept'] = 'application/json'
             self.headers['Content-Type'] = 'application/json'            
             
         elif miljo == 'prodskriv': 
             self.apiurl = 'https://www.vegvesen.no' 
-            self.openAMurl = 'https://www.vegvesen.no/openam/json/authenticate'
-            self.openAmNavn = 'iPlanetDirectoryProOAM'
+            self.skrivloginurl = 'https://www.vegvesen.no/ws/no/vegvesen/ikt/sikkerhet/aaa/autentiser'
             self.headers['Accept'] = 'application/json'
             self.headers['Content-Type'] = 'application/json'
             
@@ -170,41 +173,41 @@ class apiforbindelse( ):
         Logger inn mot apiskriv 
 
         """
-        headers = self.SVVpassord( username=username, pw=pw )
+        temp = self.SVVpassord( username=username, pw=pw )
+        body = { 'username' :  temp['X-OpenAM-Username'], 
+                 'password' :  temp['X-OpenAM-Password']
+                }        
+        headers = { "Content-Type" : "application/json"}
         
-        
-        self.loginrespons = self.requestsession.get( url=self.apiurl, 
+        self.loginrespons = self.requestsession.post( url=self.skrivloginurl, 
                                         headers=headers, 
-                                        params = { 'realm' : 'External', 
-                                                'authIndexType' : 'module', 
-                                                'authIndexValue' : 'LDAP'})
+                                        json=body )
         
         if self.loginrespons.ok:
             temp = self.loginrespons.json()
-            if 'tokenId' in temp.keys():
+            if 'token' in temp.keys():
                 
-                self.headers['Cookie'] = self.openAmNavn + '= ' + temp['tokenId']
+                self.headers['Cookie'] = temp['tokenname'] + '= ' + temp['token']
                 
             else: 
-                print( 'Fikk ikke logget på - ingen tokenId :(' )
+                print( 'Fikk ikke logget på - ingen token :(' )
                 
         else: 
-            print( "Fikk ikke logget på :( " )
+            print( "Fikk ikke logget på :(, loginrespons ", self.loginrespons.status_code )
 
-
+               
+    # def loggut(self): 
+    #     """
+    #     Logger ut av skriveAPI.
         
-    def loggut(self): 
-        """
-        Logger ut av skriveAPI.
+    #     Arguments: 
+    #         None 
+    #     """ 
         
-        Arguments: 
-            None 
-        """ 
-        
-        if 'vegvesen' in self.apiurl: 
-            self.debug = self.requestsession.get( self.apiurl + '/openam/UI/Logout') 
-        else: 
-            self.debug = self.requestsession.get( self.apiurl + '/logout')
+    #     if 'vegvesen' in self.apiurl: 
+    #         self.debug = self.requestsession.get( self.apiurl + '/openam/UI/Logout') 
+    #     else: 
+    #         self.debug = self.requestsession.get( self.apiurl + '/logout')
         
     def SVVpassord( self, username=None, pw=None): 
         
