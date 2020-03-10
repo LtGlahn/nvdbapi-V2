@@ -450,19 +450,6 @@ class endringssett():
             for rel in data: 
                 if rel['rel'] == 'self': 
                     self.minlenke = rel['src']
-                    
-                if rel['rel'] == 'start': 
-                    self.startlenke = rel['src']
-                    
-                if rel['rel'] == 'kanseller': 
-                    self.kansellerlenke = rel['src']
-                    
-                if rel['rel'] == 'status':
-                    self.statuslenke = rel['src']
-                    
-                if rel['rel'] == 'fremdrift': 
-                    self.fremdriftlenke = rel['src']
-        
 
         else: 
             print( 'Endringssett IKKE registrert')
@@ -481,11 +468,7 @@ class endringssett():
             print( "Ingen aktiv forbindelse med NVDB api skriv")
             return 
             
-        if not self.startlenke: 
-            print( "Noe har gått galt - ingen lenke til å starte skriveprosess" )
-            return 
-            
-        self.startrespons = self.forbindelse.skrivtil( self.startlenke, self.data)
+        self.startrespons = self.forbindelse.skrivtil( self.minlenke + '/start', self.data)
         if self.startrespons.ok: 
             self.status = 'startet'
         
@@ -501,7 +484,7 @@ class endringssett():
             elif self.status == 'startet': 
                 print( "Skriveprosess startet i NVDB api, bruk funksjon sjekkfremdrift")
                 
-            b = self.forbindelse.les( self.statuslenke)
+            b = self.forbindelse.les( self.minlenke + '/status')
             self.statusrespons = b 
             if b.text in [ '"UTFØRT"', '"AVVIST"'] : 
                 self.status = b.text.replace('"', '') # Fjerner dobbelfnutter... 
@@ -510,7 +493,6 @@ class endringssett():
             else: 
                 print( "http status:", str( b.status_code))
                 print( b.text)
-
             
     def sjekkfremdrift(self , returdata=False): 
         """Sjekker fremdrift på skriveprosess NVDB api
@@ -529,7 +511,7 @@ class endringssett():
             print(returdata)
         else: 
             
-            self.fremdriftrespons = self.forbindelse.les( self.fremdriftlenke)
+            self.fremdriftrespons = self.forbindelse.les( self.minlenke + '/fremdrift')
             print( 'Http status:', self.fremdriftrespons.status_code)
             returdata = self.fremdriftrespons.text 
             print( returdata )
