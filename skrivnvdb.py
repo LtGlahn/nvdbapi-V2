@@ -475,33 +475,39 @@ class endringssett():
         
     def sjekkstatus(self, returjson=False ): 
         """Sjekker status på endringssettet"""
-        if self.status == 'ikke registrert':
+        if self.status == 'ikke registrert' and not self.minlenke:
             print( "Endringssettet er IKKE registrert hos NVDB api")
         else: 
             
-            if self.status == 'registrert': 
-                print( "Endringssett er registrert hos NVDB api, skriveprosess er ikke startet")
-            elif self.status == 'startet': 
+            if self.status == 'startet': 
                 print( "Skriveprosess startet i NVDB api, bruk funksjon sjekkfremdrift")
+            elif self.status == 'registrert' or self.minlenke: 
+                print( "Endringssett er registrert hos NVDB api")
+
+            temp = None 
+            if self.minlenke:     
+                self.statusrespons = self.forbindelse.les( self.minlenke + '/status')
                 
-            b = self.forbindelse.les( self.minlenke + '/status')
-            self.statusrespons = b 
-            if b.text in [ '"UTFØRT"', '"AVVIST"'] : 
-                self.status = b.text.replace('"', '') # Fjerner dobbelfnutter... 
-            if returjson: 
-                return( b.json())
-            else: 
-                print( "http status:", str( b.status_code))
-                print( b.text)
+                temp = self.statusrespons.json()
+                self.status = temp['fremdrift']
             
-    def sjekkfremdrift(self , returdata=False): 
-        """Sjekker fremdrift på skriveprosess NVDB api
-        Nøkkelord returdata=True (default: False) returnerer teksten 
-        vi får fra NVDB api, til bruk i dine funksjoner, f.eks for å itere over
+            if returjson and temp: 
+                return( temp )
+            elif temp and 'fremdrift' in temp.keys(): 
+                print( temp['fremdrift'])
+            else: 
+                print( "ALVORLIG FEIL??? Sjekk returverdi .statusrespons på skriveobjektet")
+            
+    def sjekkfremdrift(self ): 
+        """
+        Sjekker fremdrift på skriveprosess NVDB api
+        returnerer teksten vi får fra NVDB api /fremdrift, 
+        til bruk i dine funksjoner, f.eks for å itere over
         mange endringssett (lurt å dele opp i mindre biter, pga låsekonflikt etc)
         Sjekk for verdien BEHANDLES i din applikasjon - det betyr at 
-        skriveprosess ikke er ferdig behandlet. """
-        if self.status == 'ikke registrert':
+        skriveprosess ikke er ferdig behandlet. 
+        """
+        if self.status == 'ikke registrert' and not self.minlenke:
             returdata = "Endringssettet er IKKE registrert hos NVDB api"
             print( returdata )
         elif self.status == 'registrert':
@@ -512,15 +518,13 @@ class endringssett():
         else: 
             
             self.fremdriftrespons = self.forbindelse.les( self.minlenke + '/fremdrift')
-            print( 'Http status:', self.fremdriftrespons.status_code)
-            returdata = self.fremdriftrespons.text 
-            print( returdata )
+            returdata = self.fremdriftrespons.text
+
+            returdata = returdata.replace('"', '') # Fjerner dobbeltfnutter
             
             self.status = returdata
         
-        if returdata: 
-            return returdata
-
+        return returdata
     
 
 
