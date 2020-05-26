@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Lagre vegnett og fagdata fra NVDB til geojson. 
 Bruker klassene nvdbVegnett og nvdbFagdata fra nvdbapi.py
@@ -24,6 +25,60 @@ from warnings import warn
 # (on 64 bit machines you may choose 32 or 64 bit installations of python , 
 # so beware))
 
+
+def swap_coords(geom):
+    """"""
+    if geom.type == 'Point':
+        tempx = geom.x
+        tempy = geom.y
+        if geom.has_z:
+            tempz = geom.z
+            geom = shapely.geometry.Point( tempy, tempx, tempz )
+        else:
+            geom = shapely.geometry.Point( tempy, tempx)
+
+    elif geom.type == 'LineString':
+
+        if not geom.has_z:
+            print( "2d koord", v['id'])
+
+        tmpcoords = list( geom.coords)
+        newcoords = []
+        for point in tmpcoords:
+
+            if geom.has_z:
+                newcoords.append( (point[1], point[0], point[2] )  )
+            else:
+                newcoords.append( (point[1], point[0] )  )
+        geom = shapely.geometry.LineString( newcoords )
+    else:
+        warn( 'Geometry swap (x,y)->(y,x) required for srid=4326, not impemented for type' + geom.type )
+    return geom
+
+
+def erstatt_norsk(tekst):
+    """"""
+    til_ascii = [
+        ("æ", "ae"),
+        ("Æ", "Ae"),
+        ("ø", "o"),
+        ("Ø", "O"),
+        ("å", "a"),
+        ("Å", "A")
+    ]
+
+    for char in til_ascii:
+        tekst = tekst.replace(*char)
+
+    return tekst
+
+
+def normaliser(dict):
+    """"""
+    dict = {erstatt_norsk(dkey.lower()): dval for dkey, dval in dict.items()}
+    return dict
+
+
 def __addveg2geojson( vegseg, mygeojson ): 
     """Internt metode, føyer til ett enkelt vegsegment til eksisterende geojson"""
     
@@ -46,7 +101,10 @@ def __addveg2geojson( vegseg, mygeojson ):
         egenskaper[k] = v[k]
 
     geom = shapely.wkt.loads( wktgeom)
-    
+
+    if v['geometri']['srid'] == 4326:
+        geom = swap_coords(geom)
+
     if geom.type == 'LineString':
         mygeojson['features'].append( geojson.Feature(geometry=geom, 
                                                       properties=egenskaper))
@@ -91,6 +149,13 @@ def vegnett2geojson(vegnett, ignorewarning=False, maxcount=False, vegsegmenter=T
             warn( 'For mange lenker - bruk  ignorewarning=True for hele Norge' ) 
             maxcount = 1000
         
+        if 'srid' in vegnett.respons and vegnett.respons['srid'] == 4326:
+            mygeojson.update({'crs': {
+                "type": "name",
+                "properties": {
+                    "name": "urn:ogc:def:crs:EPSG::4326"
+                }}})
+
         v = vegnett.nesteForekomst()
         count = 0
         stopp = False
@@ -134,7 +199,7 @@ def __geometritypefilter( shapelygeometri, geometritype='' ):
 
 def __addfag2geojson( fag, mygeojson, vegsegmenter=True, 
                      ignoreregenskaper=False, ignorervegref=False, 
-                     geometrityper=''): 
+                     geometrityper='', normaliser_kolonnenavn=False): 
     """Internt metode, føyer til et NVDB fagobjekt til eksisterende geojson.
     
     geometrityper filtrerer ut de geometritypene man vil ha. Følger 
@@ -164,33 +229,7 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
             geom = shapely.wkt.loads( seg['geometri']['wkt'])
             
             if seg['geometri']['srid'] == 4326: 
-                
-                if geom.type == 'Point': 
-                    tempx = geom.x
-                    tempy = geom.y
-                    if geom.has_z: 
-                        tempz = geom.z
-                        geom = shapely.geometry.Point( tempy, tempx, tempz )
-                    else: 
-                        geom = shapely.geometry.Point( tempy, tempx)
-
-                elif geom.type == 'LineString': 
-                    
-                    if not geom.has_z: 
-                        print( "2d koord", fag['id'])
-
-                    tmpcoords = list( geom.coords)
-                    newcoords = []
-                    for point in tmpcoords: 
-                        
-                        if geom.has_z: 
-                            newcoords.append( (point[1], point[0], point[2] )  )
-                        else:
-                            newcoords.append( (point[1], point[0] )  )
-                    geom = shapely.geometry.LineString( newcoords )
-                else: 
-                    warn( 'Geometry swap (x,y)->(y,x) required for srid=4326, not impemented for type' + geom.type )
-                    
+                geom = swap_coords(geom)
             
             seg.pop('geometri')
             vref = seg.pop( 'vegreferanse')
@@ -202,6 +241,10 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
                 eg.update(seg)
             else: 
                 eg['kortform'] = vref['kortform']
+
+            if normaliser_kolonnenavn:
+                # Unngå duplikater i felt pga store/smabokstaver
+                eg = normaliser(eg)
              
             if __geometritypefilter( geom, geometritype=geometrityper): 
                 mygeojson['features'].append( geojson.Feature(geometry=geom, 
@@ -215,6 +258,10 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
         geom = shapely.wkt.loads( fag['geometri']['wkt']  )
         fag['lokasjon'].pop('geometri')
         egenskaper['lokasjon'] = fag['lokasjon']
+
+        if normaliser_kolonnenavn:
+            # UnngÃ¥ duplikater i felt pga store/smabokstaver
+            egenskaper = normaliser(egenskaper)
         
         if __geometritypefilter( geom, geometritype=geometrityper): 
             mygeojson['features'].append( geojson.Feature(geometry=geom, 
@@ -229,7 +276,8 @@ def __addfag2geojson( fag, mygeojson, vegsegmenter=True,
 
 def fagdata2geojson( fagdata, maxcount=False, 
                     vegsegmenter=True, ignoreregenskaper=False, 
-                    ignorervegref=False, strictGeometryType=True):
+                    ignorervegref=False, strictGeometryType=True,
+                    normaliser_kolonnenavn=False):
     """Konverterer NVDB fagdata til geojson feature collection NB utm sone 33
     UTM sone 33 (epsg:25833) er ikke standard geojson lenger, men vi angir 
     det likevel i header. 
@@ -332,8 +380,12 @@ def fagdata2geojson( fagdata, maxcount=False,
     else: 
         warn( "Sorry, gjenkjente ikke dette som NVDB fagdata" )
     
-    if 'srid' in fagdata.respons and fagdata.respons['srid'] == 4326: 
-        mygeojson.pop('crs')
+    if 'srid' in vegnett.respons and vegnett.respons['srid'] == 4326:
+        mygeojson.update({'crs': {
+            "type": "name",
+            "properties": {
+                "name": "urn:ogc:def:crs:EPSG::4326"
+            }}})
     
     return mygeojson
 
