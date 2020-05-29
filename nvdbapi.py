@@ -66,7 +66,7 @@ class nvdbVegnett:
         self.respons  = { }
         
         self.data = { 'objekter' : []}
-        self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
+        self.apiurl = 'https://nvdbapiles-v2.atlas.vegvesen.no/'
         
         
 
@@ -258,7 +258,12 @@ class nvdbVegnett:
 
     def anrope(self, path, parametre=None, debug=False, silent=False): 
     
-        if not self.apiurl in path: 
+        if (not self.apiurl in path) and ('http' in path[0:6]): 
+            warn( 'Paginering ULR går til annen adresse enn standard API url!\n' + \
+                    'standard API url: ' + self.apiurl + '\n' + \
+                    'Paginering URL: ' + path )
+            url = path 
+        elif not self.apiurl in path: 
             url = ''.join(( self.apiurl, path)) 
         else: 
             url = path 
@@ -326,8 +331,9 @@ class nvdbVegnett:
             warn( mytext ) 
 
     def miljo(self, *args):
-        """Kun internt på vegvesen-nettet!
-        Kan endre hvilket miljø vi går mot.
+        """
+        Kan velge UTV eller TEST miljø, også tilgjengelig utenfor SVV nettverk
+
         Parametre: 
             ingen - skriver lenken til NVDB api
             'utv' - bruker UTVIKLINGSmiljøet
@@ -344,11 +350,11 @@ class nvdbVegnett:
         if args and isinstance( args[0], str): 
             
             if args[0].lower() == 'utv': 
-                self.apiurl = 'https://www.utv.vegvesen.no/nvdb/api/v2/'
+                self.apiurl = 'https://nvdbapiles-v2.utv.atlas.vegvesen.no/'
             elif args[0].lower() == 'test':
-                self.apiurl = 'https://www.test.vegvesen.no/nvdb/api/v2/'
+                self.apiurl = 'https://nvdbapiles-v2.test.atlas.vegvesen.no/'
             elif args[0].lower() == 'prod': 
-                self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
+                self.apiurl = 'https://nvdbapiles-v2.atlas.vegvesen.no/'
             else: 
                 print( "Forstod ikke parameter:", args[0])
                 print("Lovlige valg: utv, test eller prod")
@@ -411,7 +417,7 @@ class nvdbFagdata(nvdbVegnett):
                 } 
     
         self.data = { 'objekter' : []}
-        self.apiurl = 'https://www.vegvesen.no/nvdb/api/v2/'
+        self.apiurl = 'https://nvdbapiles-v2.atlas.vegvesen.no/'
 
         self.objektTypeId = None
         self.objektTypeDef = None
